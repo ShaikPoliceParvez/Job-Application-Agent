@@ -159,11 +159,26 @@ def _parse_generated(raw: str) -> GeneratedEmail:
     except json.JSONDecodeError as exc:
         start, end = cleaned.find("{"), cleaned.rfind("}")
         if start < 0 or end <= start:
-            raise ValueError("Model did not return email JSON") from exc
+            subject_match = re.search(r"^\s*Subject\s*:\s*(.+?)\s*$", cleaned, re.I | re.M)
+            if subject_match:
+                body = cleaned[subject_match.end():].strip()
+                return GeneratedEmail(subject_match.group(1).strip(), body)
+            raise ValueError("Model did not return email JSON or recognizable email text") from exc
         value = json.loads(cleaned[start : end + 1])
     if not isinstance(value, dict) or not isinstance(value.get("subject"), str) or not isinstance(value.get("body"), str):
         raise ValueError("Email JSON must contain string subject and body")
     return GeneratedEmail(value["subject"].strip(), value["body"].strip())
+
+
+def _trim_main_body(body: str, word_limit: int) -> str:
+    """Bound verbose model output while preserving greeting and signature."""
+    signature_match = re.search(r"\n\s*Best regards,", body, re.I)
+    main = body[: signature_match.start()] if signature_match else body
+    signature = body[signature_match.start():].strip() if signature_match else ""
+    words = re.findall(r"\S+", main.strip())
+    if len(words) > word_limit:
+        main = " ".join(words[:word_limit]).rstrip(" ,;:") + "."
+    return f"{main.strip()}\n\n{signature}".strip() if signature else main.strip()
 
 
 def generate_email(
@@ -189,7 +204,7 @@ def generate_email(
             email = _parse_generated(raw)
             email = GeneratedEmail(
                 _subject_with_candidate_name(email.subject, profile),
-                _with_verified_signature(email.body, profile),
+                _trim_main_body(_with_verified_signature(email.body, profile), _requested_word_limit(instructions)),
             )
             result = validate_email(
                 email.subject,

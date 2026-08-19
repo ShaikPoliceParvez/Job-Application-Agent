@@ -147,3 +147,15 @@ def test_resume_identity_fills_subject_and_signature(monkeypatch):
     assert result.subject == "Application for AI/ML Engineer Intern - Shaik Police Parvez"
     assert "2004parvez@gmail.com" in result.body
     assert "8341765885" in result.body
+
+
+def test_verbose_model_output_is_trimmed_before_validation(monkeypatch):
+    class FakeModel:
+        def generate(self, prompt, **kwargs):
+            long_body = "Dear HR Team,\n\n" + "Relevant qualification details. " * 80
+            return '{"subject":"Application","body":' + repr(long_body).replace("'", '"') + "}"
+
+    monkeypatch.setattr("backend.app.agents.draft.get_job_model", lambda: FakeModel())
+    result = generate_email("Python internship", {"name": "Parvez"}, "Resume", "hr@example.com")
+
+    assert len(result.body.split("Best regards,")[0].split()) <= 120
