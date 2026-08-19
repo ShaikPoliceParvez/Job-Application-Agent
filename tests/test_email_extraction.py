@@ -1,4 +1,4 @@
-from app.models.paddle_ocr import extract_email_candidates
+from backend.app.models.paddle_ocr import extract_email_candidates
 
 
 def test_extracts_single_email():

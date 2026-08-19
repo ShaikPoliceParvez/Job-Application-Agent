@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from backend.app.main import app
 
 client = TestClient(app)
 
@@ -52,7 +52,7 @@ def test_analyze_rejects_empty_file():
     assert response.status_code == 400
 
 
-@patch("app.models.paddle_ocr.PaddleOCRModel._load")
+@patch("backend.app.models.paddle_ocr.PaddleOCRModel._load")
 def test_analyze_success_with_mocked_ocr(mock_load):
     mock_engine = MagicMock()
     mock_engine.predict.return_value = _fake_predict_result()
@@ -77,7 +77,7 @@ def test_analyze_success_with_mocked_ocr(mock_load):
     assert data["screenshot_path"] is not None
 
 
-@patch("app.models.paddle_ocr.PaddleOCRModel._load")
+@patch("backend.app.models.paddle_ocr.PaddleOCRModel._load")
 def test_analyze_flags_low_confidence(mock_load):
     mock_engine = MagicMock()
     mock_engine.predict.return_value = [
@@ -100,7 +100,7 @@ def test_analyze_flags_low_confidence(mock_load):
     assert data["low_confidence"] is True
 
 
-@patch("app.models.paddle_ocr.PaddleOCRModel._load")
+@patch("backend.app.models.paddle_ocr.PaddleOCRModel._load")
 def test_analyze_handles_ocr_engine_failure_gracefully(mock_load):
     mock_load.side_effect = RuntimeError("simulated model load failure")
 

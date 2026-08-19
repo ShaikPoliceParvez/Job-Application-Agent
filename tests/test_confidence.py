@@ -1,4 +1,4 @@
-from app.ocr.confidence import (
+from backend.app.ocr.confidence import (
     calculate_ocr_confidence,
     has_insufficient_text,
     is_low_confidence,

@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.agents.draft import build_draft_prompt
+from backend.app.main import app
+from backend.app.agents.draft import build_draft_prompt
 
 
 client = TestClient(app)
@@ -33,7 +33,7 @@ def test_chat_homepage_is_served():
 
 
 def test_draft_streams_pasted_text_and_model_tokens():
-    with patch("app.main.load_candidate_context") as load_context, patch("app.main.stream_draft") as stream:
+    with patch("backend.app.main.load_candidate_context") as load_context, patch("backend.app.main.stream_draft") as stream:
         load_context.return_value = ({"name": "Candidate"}, "Python resume", "resume.txt")
         stream.return_value = iter(["Subject: Application\n\n", "Hello HR,"])
 
@@ -58,7 +58,7 @@ def test_draft_requires_a_source():
 
 
 def test_refine_streams_revised_draft():
-    with patch("app.main.load_candidate_context") as load_context, patch("app.main.stream_refinement") as stream:
+    with patch("backend.app.main.load_candidate_context") as load_context, patch("backend.app.main.stream_refinement") as stream:
         load_context.return_value = ({"name": "Candidate"}, "resume", "resume.txt")
         stream.return_value = iter(["Subject: Revised\n\n", "Dear HR Team,"])
 

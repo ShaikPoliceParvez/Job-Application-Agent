@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from app.models.paddle_ocr import PaddleOCRModel
+from backend.app.models.paddle_ocr import PaddleOCRModel
 
 
 def test_supports_paddleocr_29_legacy_ocr_result():

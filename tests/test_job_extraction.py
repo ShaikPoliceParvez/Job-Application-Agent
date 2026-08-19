@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from backend.app.main import app
 
 
 client = TestClient(app)
@@ -10,7 +10,7 @@ client = TestClient(app)
 
 def test_extract_job_uses_local_model_and_trusted_email():
     with patch(
-        "app.agents.job_extraction.get_job_model"
+        "backend.app.agents.job_extraction.get_job_model"
     ) as get_model:
         get_model.return_value.generate.return_value = (
             '{"company":"ABC Technologies","role":"AI Engineer Intern",'
@@ -32,7 +32,7 @@ def test_extract_job_uses_local_model_and_trusted_email():
 
 
 def test_extract_job_clears_untrusted_model_email():
-    with patch("app.agents.job_extraction.get_job_model") as get_model:
+    with patch("backend.app.agents.job_extraction.get_job_model") as get_model:
         get_model.return_value.generate.return_value = (
             '{"recipient_email":"invented@example.com"}'
         )
@@ -47,7 +47,7 @@ def test_extract_job_clears_untrusted_model_email():
 
 
 def test_extract_job_accepts_string_requirements_from_small_model():
-    with patch("app.agents.job_extraction.get_job_model") as get_model:
+    with patch("backend.app.agents.job_extraction.get_job_model") as get_model:
         get_model.return_value.generate.return_value = (
             '{"company":"ABC Technologies","requirements":"Strong Python programming '
             'and deployment concepts"}'

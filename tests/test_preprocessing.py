@@ -1,6 +1,6 @@
 import numpy as np
 
-from app.ocr.preprocessing import (
+from backend.app.ocr.preprocessing import (
     correct_rotation,
     enhance_contrast,
     load_image,
