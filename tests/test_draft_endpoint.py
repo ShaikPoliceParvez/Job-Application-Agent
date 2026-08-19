@@ -17,12 +17,35 @@ def test_draft_prompt_contains_requested_email_constraints():
         "Built AI applications using RAG and LangGraph.",
     )
 
-    assert "Maximum 120 words" in prompt
-    assert "Dear HR Team," in prompt
-    assert "Regards,\nParvez" in prompt
-    assert "Never mention salary expectations" in prompt
+    assert "Body maximum: 120 words" in prompt
+    assert 'Return JSON only with exactly two keys: subject and body' in prompt
+    assert "Best regards," in prompt
+    assert "Never invent or exaggerate" in prompt
     assert "RAG" in prompt
     assert "LangGraph" in prompt
+
+
+def test_draft_prompt_contains_profile_signature_without_placeholders():
+    prompt = build_draft_prompt(
+        "AI/ML Engineer Intern",
+        {
+            "name": "Shaik Parvez",
+            "education": [{"institution": "Indian Institute of Technology Hyderabad"}],
+            "email": "parvez@example.com",
+            "phone": "+91 99999 99999",
+            "links": {"linkedin": "linkedin.com/in/parvez", "github": ""},
+        },
+        "Resume text",
+    )
+
+    assert "Best regards,\nShaik Parvez" in prompt
+    assert "Indian Institute of Technology Hyderabad" in prompt
+    assert "parvez@example.com" in prompt
+    assert "+91 99999 99999" in prompt
+    assert "LinkedIn: linkedin.com/in/parvez" in prompt
+    assert "GitHub:" not in prompt
+    assert "[Email Address]" not in prompt
+    assert "[Phone Number]" not in prompt
 
 
 def test_chat_homepage_is_served():

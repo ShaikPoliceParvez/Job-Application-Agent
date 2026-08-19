@@ -1,10 +1,14 @@
-"""Local Gmail OAuth and send service."""
+"""Local Gmail OAuth, MIME construction, and send service."""
 
 from __future__ import annotations
 
 import base64
-import mimetypes
-from email.message import EmailMessage
+import html
+import re
+from email.utils import parseaddr
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
@@ -44,16 +48,13 @@ def authorization_url() -> str:
     _oauth_flow = Flow.from_client_config(_client_config(), SCOPES, state=None)
     _oauth_flow.redirect_uri = settings.google_redirect_uri
     url, _oauth_state = _oauth_flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
-        prompt="consent",
+        access_type="offline", include_granted_scopes="true", prompt="consent"
     )
     return url
 
 
 def finish_authorization(code: str, state: str) -> str:
     global _oauth_flow, _oauth_state
-
     if _oauth_flow is None or not _oauth_state or state != _oauth_state:
         raise RuntimeError("Invalid Gmail authorization state")
     _oauth_flow.fetch_token(code=code)
@@ -77,7 +78,6 @@ def gmail_account() -> str:
         settings.google_token_path.write_text(credentials.to_json(), encoding="utf-8")
     if not credentials.valid:
         return ""
-
     from googleapiclient.discovery import build
 
     try:
@@ -86,8 +86,6 @@ def gmail_account() -> str:
         ).execute()
         return str(profile.get("emailAddress", "")) or "Gmail account connected"
     except Exception:
-        # The send-only scope is sufficient for sending but not for reading
-        # the profile endpoint. A valid send token is still connected.
         return "Gmail account connected"
 
 
@@ -99,44 +97,82 @@ def logout() -> None:
     _oauth_state = ""
 
 
-def send_email(recipient: str, subject: str, body: str, attachment_path: str = "") -> str:
-    if not recipient.strip() or not subject.strip() or not body.strip():
-        raise ValueError("Recipient, subject, and email body are required")
-    credentials = _credentials()
-    if credentials is None:
-        raise RuntimeError("Connect a Gmail account before sending")
-    if credentials.expired and credentials.refresh_token:
-        from google.auth.transport.requests import Request
+def text_to_html_email(body: str) -> str:
+    paragraphs = []
+    for paragraph in re.split(r"\n\s*\n", body.strip()):
+        escaped = html.escape(paragraph.strip()).replace("\n", "<br>\n")
+        if escaped:
+            paragraphs.append(f'<p style="margin:0 0 16px 0;">{escaped}</p>')
+    content = "\n".join(paragraphs)
+    return f'''<!doctype html>
+<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#ffffff;color:#222222;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;">
+<div style="width:100%;max-width:680px;margin:0 auto;padding:24px 16px;box-sizing:border-box;">{content}</div>
+</body></html>'''
 
-        credentials.refresh(Request())
-        settings.google_token_path.write_text(credentials.to_json(), encoding="utf-8")
-    if not credentials.valid:
-        raise RuntimeError("Gmail authorization expired; connect the account again")
+
+def build_mime_message(
+    recipient: str,
+    subject: str,
+    body: str,
+    attachment_path: str = "",
+    sender: str = "",
+) -> MIMEMultipart:
+    _, address = parseaddr(recipient.strip())
+    if not address or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", address):
+        raise ValueError("Recipient email is missing or invalid")
+    if not subject.strip() or not body.strip():
+        raise ValueError("Recipient, subject, and email body are required")
+    message = MIMEMultipart("mixed")
+    if sender.strip():
+        message["From"] = sender.strip()
+    message["To"] = recipient.strip()
+    message["Subject"] = subject.strip()
+
+    alternative = MIMEMultipart("alternative")
+    alternative.attach(MIMEText(body.strip(), "plain", "utf-8"))
+    alternative.attach(MIMEText(text_to_html_email(body), "html", "utf-8"))
+    message.attach(alternative)
+
+    if not attachment_path:
+        raise ValueError("Configure a candidate resume before sending")
+    source = Path(attachment_path)
+    if not source.is_absolute():
+        source = settings.resume_directory / source
+    source = source.resolve()
+    resume_root = settings.resume_directory.resolve()
+    if resume_root not in source.parents or not source.is_file():
+        raise ValueError("Configured candidate resume could not be found")
+    if source.suffix.lower() != ".pdf":
+        raise ValueError("Candidate resume attachment must be a PDF")
+    attachment = MIMEApplication(source.read_bytes(), _subtype="pdf")
+    attachment.add_header("Content-Disposition", "attachment", filename=source.name)
+    message.attach(attachment)
+    return message
+
+
+def send_email(recipient: str, subject: str, body: str, attachment_path: str = "") -> str:
+    credentials = _credentials()
+    if settings.email_send_mode == "gmail":
+        if credentials is None:
+            raise RuntimeError("Connect a Gmail account before sending")
+        if credentials.expired and credentials.refresh_token:
+            from google.auth.transport.requests import Request
+
+            credentials.refresh(Request())
+            settings.google_token_path.write_text(credentials.to_json(), encoding="utf-8")
+        if not credentials.valid:
+            raise RuntimeError("Gmail authorization expired; connect the account again")
+
+    message = build_mime_message(recipient, subject, body, attachment_path)
+    if settings.email_send_mode == "mock":
+        settings.log_dir.mkdir(parents=True, exist_ok=True)
+        preview = settings.log_dir / "mock_email_preview.eml"
+        preview.write_bytes(message.as_bytes())
+        return f"mock:{preview.name}"
 
     from googleapiclient.discovery import build
 
-    message = EmailMessage()
-    message["To"] = recipient.strip()
-    message["Subject"] = subject.strip()
-    message.set_content(body.strip())
-    if attachment_path:
-        source = Path(attachment_path)
-        if not source.is_absolute():
-            source = settings.resume_directory / source
-        source = source.resolve()
-        resume_root = settings.resume_directory.resolve()
-        if resume_root not in source.parents or not source.is_file():
-            raise ValueError("Configured candidate resume could not be found")
-        content_type, _ = mimetypes.guess_type(source.name)
-        maintype, subtype = (content_type or "application/octet-stream").split("/", 1)
-        message.add_attachment(
-            source.read_bytes(),
-            maintype=maintype,
-            subtype=subtype,
-            filename=source.name,
-        )
-    else:
-        raise ValueError("Configure a candidate resume before sending")
     encoded = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
     result = build("gmail", "v1", credentials=credentials, cache_discovery=False).users().messages().send(
         userId="me", body={"raw": encoded}

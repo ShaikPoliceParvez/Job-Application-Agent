@@ -1,3 +1,9 @@
+ .preview-toggle { display:flex; gap:4px; margin:8px 0 4px; }
+ .preview-mode { padding:5px 8px; color:var(--muted); background:#fff; border:1px solid var(--line); border-radius:5px; font-size:9px; cursor:pointer; }
+ .preview-mode.active { color:var(--green-dark); background:var(--soft); border-color:#acd8bd; }
+ .draft-rendered { min-height:139px; max-height:139px; overflow:auto; margin:0; padding:12px 10px; color:#222; background:#fff; border:1px solid var(--line); border-radius:6px; font:15px/1.6 Arial,Helvetica,sans-serif; }
+ .draft-rendered p { margin:0 0 16px; }
+ .attachment-note { margin-top:5px; color:var(--green-dark); font-size:9px; }
  @media (min-width:761px) { .left-column { grid-template-rows:286px 108px 184px !important; } }
  .gmail-status { font:inherit; text-align:left; cursor:pointer; }
  .gmail-status:disabled { cursor:default; opacity:1; }

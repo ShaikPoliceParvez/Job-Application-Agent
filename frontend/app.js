@@ -14,6 +14,13 @@ const gmailConnect = document.querySelector('#gmail-connect');
 const gmailLabel = document.querySelector('#gmail-label');
 const gmailAccount = document.querySelector('#gmail-account');
 const gmailLogout = document.querySelector('#gmail-logout');
+const draftFrom = document.querySelector('#draft-from');
+const draftRendered = document.querySelector('#draft-rendered');
+const previewToggle = document.querySelector('#preview-toggle');
+const plainPreviewButton = document.querySelector('#plain-preview-button');
+const renderedPreviewButton = document.querySelector('#rendered-preview-button');
+const attachmentNote = document.querySelector('#attachment-note');
+const attachmentName = document.querySelector('#attachment-name');
 const refineInstruction = document.querySelector('#refine-instruction');
 const refineButton = document.querySelector('#refine-button');
 const fileName = document.querySelector('#file-name');
@@ -58,6 +65,18 @@ async function loadResume() {
   const data = await fetch('/resume').then(response => response.json());
   document.querySelector('#resume-name').textContent = data.name || 'No resume configured';
   document.querySelector('#resume-size').textContent = data.size_bytes ? `${Math.ceil(data.size_bytes / 1024)} KB` : 'Add a PDF, TXT, MD, or JSON file';
+  attachmentName.textContent = data.name ? `${data.name} attached on send` : 'Resume required before sending';
+}
+function escapeHtml(value) { return value.replace(/[&<>\'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character])); }
+function renderDraftPreview() {
+  const lines = draft.value.split('\n'); const subjectIndex = lines.findIndex(line => /^\*{0,2}subject\*{0,2}\s*:/i.test(line));
+  const body = subjectIndex >= 0 ? lines.slice(subjectIndex + 1).join('\n').trim() : draft.value.trim();
+  draftRendered.innerHTML = body.split(/\n\s*\n/).filter(Boolean).map(paragraph => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`).join('');
+  draftFrom.textContent = gmailConnected ? gmailAccount.textContent : 'Authenticated Gmail account';
+  previewToggle.classList.remove('hidden'); attachmentNote.classList.remove('hidden');
+}
+function showPreview(mode) {
+  const rendered = mode === 'rendered'; draft.classList.toggle('hidden', rendered); draftRendered.classList.toggle('hidden', !rendered); plainPreviewButton.classList.toggle('active', !rendered); renderedPreviewButton.classList.toggle('active', rendered);
 }
 async function analyze() {
   if (!message.value.trim() && !selectedFile) { progress.textContent = 'Paste a job post or choose a screenshot first.'; return; }
@@ -79,7 +98,7 @@ async function generateDraft() {
   if (!extractedText) return;
   regenerateButton.disabled = true; refineButton.disabled = true; setDraftEditing(false); draftState.textContent = 'Writing...'; draftEmpty.classList.add('hidden'); draft.classList.remove('hidden'); draft.value = ''; approveButton.disabled = true;
   const form = new FormData(); form.append('message', extractedText); form.append('instructions', instructions.value);
-  try { const response = await fetch('/draft', { method:'POST', body:form }); if (!response.ok) throw new Error((await response.json()).detail); await readStream(response, event => { if (event.type === 'status') progress.textContent = event.data.message; if (event.type === 'draft_token') draft.value += event.data.text; if (event.type === 'complete') { draftState.textContent = 'Draft ready'; approveButton.disabled = false; splitDraft(); } if (event.type === 'error') throw new Error(event.data.message); }); }
+  try { const response = await fetch('/draft', { method:'POST', body:form }); if (!response.ok) throw new Error((await response.json()).detail); await readStream(response, event => { if (event.type === 'status') progress.textContent = event.data.message; if (event.type === 'draft_token') draft.value += event.data.text; if (event.type === 'complete') { draftState.textContent = 'Draft ready'; approveButton.disabled = false; splitDraft(); renderDraftPreview(); } if (event.type === 'error') throw new Error(event.data.message); }); }
   catch (error) { progress.textContent = error.message; draftState.textContent = 'Needs attention'; } finally { regenerateButton.disabled = false; refineButton.disabled = !draft.value.trim(); }
 }
 async function refineDraft() {
@@ -88,7 +107,7 @@ async function refineDraft() {
   if (!instruction) { progress.textContent = 'Describe the edit you want to make.'; refineInstruction.focus(); return; }
   refineButton.disabled = true; regenerateButton.disabled = true; editButton.disabled = true; approveButton.disabled = true; setDraftEditing(false); draftState.textContent = 'Updating...'; progress.textContent = 'Applying your edit...';
   const form = new FormData(); form.append('instruction', instruction); form.append('current_draft', draft.value); form.append('posting', extractedText);
-  try { const response = await fetch('/refine', { method:'POST', body:form }); if (!response.ok) throw new Error((await response.json()).detail); draft.value = ''; await readStream(response, event => { if (event.type === 'status') progress.textContent = event.data.message; if (event.type === 'draft_token') draft.value += event.data.text; if (event.type === 'complete') { draftState.textContent = 'Draft ready'; approveButton.disabled = false; splitDraft(); } if (event.type === 'error') throw new Error(event.data.message); }); refineInstruction.value = ''; }
+  try { const response = await fetch('/refine', { method:'POST', body:form }); if (!response.ok) throw new Error((await response.json()).detail); draft.value = ''; await readStream(response, event => { if (event.type === 'status') progress.textContent = event.data.message; if (event.type === 'draft_token') draft.value += event.data.text; if (event.type === 'complete') { draftState.textContent = 'Draft ready'; approveButton.disabled = false; splitDraft(); renderDraftPreview(); } if (event.type === 'error') throw new Error(event.data.message); }); refineInstruction.value = ''; }
   catch (error) { progress.textContent = error.message; draftState.textContent = 'Needs attention'; }
   finally { refineButton.disabled = !draft.value.trim(); regenerateButton.disabled = false; editButton.disabled = false; }
 }
@@ -105,16 +124,18 @@ async function sendDraft() {
   if (!subject || !body) { progress.textContent = 'The draft needs a subject and body before sending.'; return; }
   approveButton.disabled = true; gmailConnect.disabled = true; progress.textContent = 'Sending through Gmail...';
   const form = new FormData(); form.append('recipient', candidateEmails[0]); form.append('subject', subject); form.append('body', body);
-  try { const response = await fetch('/gmail/send', { method:'POST', body:form }); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Gmail send failed'); draftState.textContent = 'Sent'; progress.textContent = `Email sent to ${candidateEmails[0]} with the candidate resume attached.`; approveButton.textContent = '✓ Sent via Gmail'; }
+  try { const response = await fetch('/gmail/send', { method:'POST', body:form }); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Gmail send failed'); draftState.textContent = data.status === 'MOCK_SENT' ? 'Mock sent' : 'Sent'; progress.textContent = data.status === 'MOCK_SENT' ? 'Mock email preview saved with the candidate resume attached.' : `Email sent to ${candidateEmails[0]} with the candidate resume attached.`; approveButton.textContent = data.status === 'MOCK_SENT' ? '✓ Mock Sent' : '✓ Sent via Gmail'; }
   catch (error) { progress.textContent = error.message; approveButton.disabled = false; }
   finally { gmailConnect.disabled = false; }
 }
 function setDraftEditing(editing) { draftIsEditing = editing; draft.readOnly = !editing; editButton.textContent = editing ? '✓  Save Draft' : '✎  Edit Draft'; draftState.textContent = editing ? 'Editing' : 'Draft ready'; if (editing) draft.focus(); else splitDraft(); }
 analyzeButton.addEventListener('click', analyze); regenerateButton.addEventListener('click', generateDraft); editButton.addEventListener('click', () => { if (!draft.value.trim()) { progress.textContent = 'Generate a draft before editing it.'; return; } setDraftEditing(!draftIsEditing); });
 refineButton.addEventListener('click', refineDraft); refineInstruction.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); refineDraft(); } });
-clearButton.addEventListener('click', () => { message.value=''; instructions.value=''; refineInstruction.value=''; refineButton.disabled=true; selectedFile=null; extractedText=''; draft.value=''; draft.classList.add('hidden'); draftEmpty.classList.remove('hidden'); detailsContent.classList.add('hidden'); detailsEmpty.classList.remove('hidden'); detailsState.textContent='Not analyzed'; draftState.textContent='No draft yet'; approveButton.disabled=true; setDraftEditing(false); count(message, document.querySelector('#message-count'), 8000); count(instructions, document.querySelector('#instructions-count'), 1000); });
+clearButton.addEventListener('click', () => { message.value=''; instructions.value=''; refineInstruction.value=''; refineButton.disabled=true; selectedFile=null; extractedText=''; draft.value=''; draft.classList.add('hidden'); draftRendered.classList.add('hidden'); previewToggle.classList.add('hidden'); attachmentNote.classList.add('hidden'); draftEmpty.classList.remove('hidden'); detailsContent.classList.add('hidden'); detailsEmpty.classList.remove('hidden'); detailsState.textContent='Not analyzed'; draftState.textContent='No draft yet'; approveButton.disabled=true; setDraftEditing(false); count(message, document.querySelector('#message-count'), 8000); count(instructions, document.querySelector('#instructions-count'), 1000); });
 gmailConnect.addEventListener('click', () => { if (!gmailConnected) window.location.href = '/auth/gmail/start'; });
 gmailLogout.addEventListener('click', logoutGmail);
+plainPreviewButton.addEventListener('click', () => showPreview('plain'));
+renderedPreviewButton.addEventListener('click', () => showPreview('rendered'));
 approveButton.addEventListener('click', sendDraft);
 loadResume().catch(() => { document.querySelector('#resume-name').textContent = 'Resume unavailable'; });
 loadGmailStatus();

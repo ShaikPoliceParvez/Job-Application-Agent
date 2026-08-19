@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=8">
+  <link rel="stylesheet" href="/static/styles.css?v=9">
 </head>
 <body>
   <main class="app-shell">
@@ -24,12 +24,12 @@
       </div>
       <div class="right-column">
         <section class="card details-card"><div class="card-heading"><h2>Extracted Job Details <span>(Preview)</span></h2><span id="details-state" class="badge">Not analyzed</span></div><div id="details-empty" class="empty-state"><span class="empty-icon">▧</span><b>Extracted job details will appear here</b><small>Click “Analyze &amp; Extract” to extract information from the provided content.</small></div><div id="details-content" class="details-content hidden"><div><b>Company</b><span id="detail-company">-</span></div><div><b>Role</b><span id="detail-role">-</span></div><div><b>Location</b><span id="detail-location">-</span></div><div><b>Recruiter email</b><span id="detail-email">-</span></div><div class="requirements"><b>Requirements</b><span id="detail-requirements">-</span></div></div><button id="analyze-button" class="green-button" type="button">✣ &nbsp; Analyze &amp; Extract Details</button></section>
-        <section class="card draft-card"><div class="card-heading"><h2>Email Draft <span>(Preview)</span></h2><span id="draft-state" class="badge">No draft yet</span></div><div class="draft-meta"><b>To:</b><span id="draft-to">—</span><b>Subject:</b><span id="draft-subject">—</span></div><div class="draft-empty empty-state"><span class="empty-icon envelope">✉</span><b>Your email draft will appear here</b><small>It will be generated based on the job details, your profile, resume, and instructions.</small></div><textarea id="draft" class="draft-text hidden" readonly aria-label="Email draft"></textarea><div id="progress" class="progress"></div><div class="draft-actions"><button id="regenerate-button" class="outline-button" type="button">⟳ &nbsp; Regenerate Draft</button><button id="edit-button" class="outline-button" type="button">✎ &nbsp; Edit Draft</button><button id="clear-button" class="outline-button" type="button">♲ &nbsp; Clear</button><button id="approve-button" class="approve-button" type="button" disabled>✉ &nbsp; Send via Gmail</button></div></section>
+        <section class="card draft-card"><div class="card-heading"><h2>Email Draft <span>(Preview)</span></h2><span id="draft-state" class="badge">No draft yet</span></div><div class="draft-meta"><b>From:</b><span id="draft-from">—</span><b>To:</b><span id="draft-to">—</span><b>Subject:</b><span id="draft-subject">—</span></div><div class="draft-empty empty-state"><span class="empty-icon envelope">✉</span><b>Your email draft will appear here</b><small>It will be generated based on the job details, your profile, resume, and instructions.</small></div><div class="preview-toggle hidden" id="preview-toggle"><button id="plain-preview-button" class="preview-mode active" type="button">Plain Text</button><button id="rendered-preview-button" class="preview-mode" type="button">Rendered Preview</button></div><textarea id="draft" class="draft-text hidden" readonly aria-label="Email draft"></textarea><div id="draft-rendered" class="draft-rendered hidden" aria-label="Rendered email preview"></div><div class="attachment-note hidden" id="attachment-note">✓ <span id="attachment-name">Resume attached</span></div><div id="progress" class="progress"></div><div class="draft-actions"><button id="regenerate-button" class="outline-button" type="button">⟳ &nbsp; Regenerate Draft</button><button id="edit-button" class="outline-button" type="button">✎ &nbsp; Edit Draft</button><button id="clear-button" class="outline-button" type="button">♲ &nbsp; Clear</button><button id="approve-button" class="approve-button" type="button" disabled>✉ &nbsp; Approve &amp; Send</button></div></section>
       </div>
     </section>
     <section class="security-note"><b>♙ &nbsp; Nothing is sent automatically.</b><span>You will review and approve the email before it can be sent via your connected Gmail account.</span></section>
     <footer>Local AI Processing &nbsp; • &nbsp; Your data stays on this machine &nbsp; • &nbsp; No external servers used &nbsp; <b>♧</b></footer>
   </main>
-  <script src="/static/app.js?v=8"></script>
+  <script src="/static/app.js?v=9"></script>
 </body>
 </html>

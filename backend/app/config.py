@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     ollama_num_predict: int = 170
     ollama_draft_num_predict: int = 300
     ollama_temperature: float = 0.2
+    email_word_limit: int = 120
+    email_max_regeneration_attempts: int = 3
 
     # ---- Email sending (PHASE 6+) --------------------------------------
     email_send_mode: str = "gmail"  # "mock" | "gmail"

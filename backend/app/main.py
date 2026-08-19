@@ -124,8 +124,6 @@ def gmail_logout() -> dict:
 
 @app.post("/gmail/send")
 def gmail_send(recipient: str = Form(""), subject: str = Form(""), body: str = Form("")) -> dict:
-    if settings.email_send_mode != "gmail":
-        raise HTTPException(status_code=400, detail="Set EMAIL_SEND_MODE=gmail in .env before sending")
     try:
         _, _, resume_name = load_candidate_context()
         if not resume_name:
@@ -134,7 +132,12 @@ def gmail_send(recipient: str = Form(""), subject: str = Form(""), body: str = F
     except Exception as exc:  # noqa: BLE001 - return local Gmail error to UI
         logger.exception("GMAIL_SEND_FAILED error=%s", exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"sent": True, "message_id": message_id}
+    return {
+        "sent": True,
+        "message_id": message_id,
+        "status": "MOCK_SENT" if settings.email_send_mode == "mock" else "SENT",
+        "preview": "logs/mock_email_preview.eml" if settings.email_send_mode == "mock" else "",
+    }
 
 
 @app.post("/resume")
@@ -213,7 +216,8 @@ async def draft(
             yield _sse("extracted_text", {"text": posting})
             profile, resume, resume_name = load_candidate_context()
             yield _sse("status", {"message": "Writing a draft with local Qwen...", "resume_name": resume_name})
-            for chunk in stream_draft(posting, profile, resume, instructions):
+            recipient = extract_email_candidates(posting)[:1]
+            for chunk in stream_draft(posting, profile, resume, instructions, recipient[0] if recipient else ""):
                 yield _sse("draft_token", {"text": chunk})
             yield _sse("complete", {"resume_name": resume_name, "extracted_text": posting})
         except Exception as exc:  # noqa: BLE001 - streamed to the local UI
@@ -238,7 +242,10 @@ async def refine(
         try:
             profile, resume, resume_name = load_candidate_context()
             yield _sse("status", {"message": "Applying your edit with local Qwen...", "resume_name": resume_name})
-            for chunk in stream_refinement(current_draft, instruction, posting, profile, resume):
+            recipient = extract_email_candidates(posting)[:1]
+            for chunk in stream_refinement(
+                current_draft, instruction, posting, profile, resume, recipient[0] if recipient else ""
+            ):
                 yield _sse("draft_token", {"text": chunk})
             yield _sse("complete", {"resume_name": resume_name})
         except Exception as exc:  # noqa: BLE001 - streamed to the local UI

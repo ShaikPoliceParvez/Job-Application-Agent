@@ -11,10 +11,9 @@ from typing import Any, Protocol, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from backend.app.agents.draft import build_draft_prompt
+from backend.app.agents.draft import generate_email
 from backend.app.agents.job_extraction import extract_job
 from backend.app.config import settings
-from backend.app.models.ollama import get_job_model
 from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
 from backend.app.ocr.preprocessing import preprocess_image
 from backend.app.profile.loader import load_candidate_context
@@ -66,13 +65,14 @@ def _context_node(state: ApplicationState) -> dict[str, Any]:
 
 
 def _draft_node(state: ApplicationState) -> dict[str, Any]:
-    model = get_job_model()
-    prompt = build_draft_prompt(
-        state["source_text"], state.get("profile", {}), state.get("resume_text", "")
+    recipient = state.get("job", JobPosting()).recipient_email
+    email = generate_email(
+        state["source_text"],
+        state.get("profile", {}),
+        state.get("resume_text", ""),
+        recipient,
     )
-    email = "".join(model.generate_stream(prompt))
-    subject, separator, body = email.partition("\n")
-    return {"email_subject": subject.strip(), "email_body": body.lstrip() if separator else email}
+    return {"email_subject": email.subject, "email_body": email.body}
 
 
 def _approval_node(state: ApplicationState) -> dict[str, Any]:
