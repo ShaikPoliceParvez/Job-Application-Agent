@@ -31,6 +31,7 @@ from backend.app.logging_config import configure_logging
 from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
 from backend.app.ocr.confidence import is_low_confidence
 from backend.app.ocr.preprocessing import preprocess_image
+from backend.app.ocr.storage import retain_recent_screenshots
 from backend.app.schemas.job import JobExtractionRequest, JobExtractionResponse
 from backend.app.schemas.ocr import AnalyzeResponse
 from backend.app.agents.job_extraction import extract_job
@@ -225,6 +226,7 @@ async def draft(
                 suffix = Path(filename).suffix or ".png"
                 save_path = settings.screenshot_directory / f"{uuid.uuid4().hex}{suffix}"
                 save_path.write_bytes(raw)
+                retain_recent_screenshots(settings.screenshot_directory, settings.screenshot_retention_count)
                 yield _sse("status", {"message": "Reading the screenshot with PP-OCRv4..."})
                 posting = get_ocr_model().extract_text(preprocess_image(str(save_path)))["text"]
             if not posting:
@@ -316,6 +318,7 @@ async def analyze(file: UploadFile = File(...)) -> AnalyzeResponse:
     safe_name = f"{uuid.uuid4().hex}{suffix}"
     save_path = settings.screenshot_directory / safe_name
     save_path.write_bytes(raw)
+    retain_recent_screenshots(settings.screenshot_directory, settings.screenshot_retention_count)
 
     try:
         start = time.time()

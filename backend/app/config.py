@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     ocr_lang: str = "en"
     ocr_max_side: int = 1024
     ocr_warmup_on_startup: bool = True
+    screenshot_retention_count: int = 5
 
     # ---- LLMs (used from PHASE 2 onward, via local Ollama) ------------
     model_email: str = "qwen2.5:1.5b"     # served locally through Ollama

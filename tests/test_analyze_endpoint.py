@@ -3,10 +3,33 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.ocr.storage import retain_recent_screenshots
 
 client = TestClient(app)
 
 FIXTURE = "tests/fixtures/test_job_screenshot.png"
+
+
+def test_screenshot_retention_keeps_only_five_newest(tmp_path):
+    paths = []
+    for index in range(7):
+        path = tmp_path / f"shot-{index}.png"
+        path.write_bytes(str(index).encode())
+        path.touch()
+        paths.append(path)
+
+    # Make ordering deterministic on filesystems with coarse timestamps.
+    for index, path in enumerate(paths):
+        import os
+
+        os.utime(path, (index, index))
+
+    removed = retain_recent_screenshots(tmp_path, limit=5)
+
+    assert {path.name for path in removed} == {"shot-0.png", "shot-1.png"}
+    assert {path.name for path in tmp_path.iterdir()} == {
+        "shot-2.png", "shot-3.png", "shot-4.png", "shot-5.png", "shot-6.png"
+    }
 
 
 def _fake_predict_result():
