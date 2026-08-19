@@ -252,7 +252,30 @@ Key Phase 1 variables:
 
 Never commit your real `.env` — it's already in `.gitignore`.
 
-## 10. Running locally
+## 10. Deploying frontend and backend to Vercel
+
+The repository is split into deployment surfaces:
+
+- `frontend/` contains the static browser client.
+- `backend/` contains the deployment-facing FastAPI module.
+- `api/index.py` is the Vercel Python function entrypoint.
+- `vercel.json` routes API requests to FastAPI and static assets to `frontend/`.
+
+Import the repository into Vercel and deploy from the repository root. Add the
+production environment variables from `.env.example` in Vercel Project
+Settings, including `OLLAMA_HOST`, `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`. The Google OAuth redirect
+URI must use your deployed Vercel domain, for example
+`https://your-project.vercel.app/auth/gmail/callback`.
+
+Vercel cannot reach `localhost:11434`, keep uploaded files between serverless
+invocations, or reliably run the CPU-heavy PaddleOCR warm-up. For a full
+production deployment, use a hosted Ollama-compatible provider, object
+storage for resumes/tokens, and either a separate OCR service or a server
+runtime for PaddleOCR. The Vercel layout is suitable for the frontend and API
+boundary, but local-model settings are intended for `run.py` deployments.
+
+## 11. Running locally
 
 ```bash
 source venv/bin/activate
