@@ -2,7 +2,7 @@ from email import policy
 from email.parser import BytesParser
 
 from backend.app.config import settings
-from backend.app.gmail.service import build_mime_message, text_to_html_email
+from backend.app.gmail.service import build_mime_message, resume_attachment_name, text_to_html_email
 from backend.app.validation.email import validate_email
 from backend.app.agents.draft import generate_email
 from backend.app.main import app
@@ -46,6 +46,11 @@ def test_mime_has_alternative_parts_and_pdf_attachment(tmp_path, monkeypatch):
     attachment = parsed.get_payload(1)
     assert attachment.get_content_type() == "application/pdf"
     assert attachment.get_filename() == "Resume.pdf"
+
+
+def test_resume_attachment_name_uses_candidate_name():
+    assert resume_attachment_name("Shaik Parvez", "default_resume.pdf") == "Shaik_Parvez_resume.pdf"
+    assert resume_attachment_name("", "default_resume.pdf") == "default_resume.pdf"
 
 
 def test_email_validator_rejects_recipient_and_application_instruction():

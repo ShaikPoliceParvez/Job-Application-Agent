@@ -19,6 +19,12 @@ _oauth_state = ""
 _oauth_flow: Any = None
 
 
+def resume_attachment_name(candidate_name: str, source_name: str) -> str:
+    """Return a safe, readable filename without changing the PDF contents."""
+    stem = re.sub(r"[^A-Za-z0-9]+", "_", candidate_name).strip("_")
+    return f"{stem}_resume.pdf" if stem else source_name
+
+
 def _client_config() -> dict[str, Any]:
     if not settings.google_client_id or not settings.google_client_secret:
         raise RuntimeError("Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first")
@@ -117,6 +123,7 @@ def build_mime_message(
     body: str,
     attachment_path: str = "",
     sender: str = "",
+    attachment_name: str = "",
 ) -> MIMEMultipart:
     _, address = parseaddr(recipient.strip())
     if not address or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", address):
@@ -146,12 +153,20 @@ def build_mime_message(
     if source.suffix.lower() != ".pdf":
         raise ValueError("Candidate resume attachment must be a PDF")
     attachment = MIMEApplication(source.read_bytes(), _subtype="pdf")
-    attachment.add_header("Content-Disposition", "attachment", filename=source.name)
+    attachment.add_header(
+        "Content-Disposition", "attachment", filename=attachment_name or source.name
+    )
     message.attach(attachment)
     return message
 
 
-def send_email(recipient: str, subject: str, body: str, attachment_path: str = "") -> str:
+def send_email(
+    recipient: str,
+    subject: str,
+    body: str,
+    attachment_path: str = "",
+    attachment_name: str = "",
+) -> str:
     credentials = _credentials()
     if settings.email_send_mode == "gmail":
         if credentials is None:
@@ -164,7 +179,7 @@ def send_email(recipient: str, subject: str, body: str, attachment_path: str = "
         if not credentials.valid:
             raise RuntimeError("Gmail authorization expired; connect the account again")
 
-    message = build_mime_message(recipient, subject, body, attachment_path)
+    message = build_mime_message(recipient, subject, body, attachment_path, attachment_name=attachment_name)
     if settings.email_send_mode == "mock":
         settings.log_dir.mkdir(parents=True, exist_ok=True)
         preview = settings.log_dir / "mock_email_preview.eml"

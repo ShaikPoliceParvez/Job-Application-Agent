@@ -36,7 +36,14 @@ from backend.app.schemas.ocr import AnalyzeResponse
 from backend.app.agents.job_extraction import extract_job
 from backend.app.agents.draft import stream_draft, stream_refinement
 from backend.app.profile.loader import load_candidate_context
-from backend.app.gmail.service import authorization_url, finish_authorization, gmail_account, logout, send_email
+from backend.app.gmail.service import (
+    authorization_url,
+    finish_authorization,
+    gmail_account,
+    logout,
+    resume_attachment_name,
+    send_email,
+)
 
 configure_logging()
 logger = logging.getLogger("main")
@@ -125,10 +132,17 @@ def gmail_logout() -> dict:
 @app.post("/gmail/send")
 def gmail_send(recipient: str = Form(""), subject: str = Form(""), body: str = Form("")) -> dict:
     try:
-        _, _, resume_name = load_candidate_context()
+        profile, _, resume_name = load_candidate_context()
         if not resume_name:
             raise ValueError("Configure a candidate resume before sending")
-        message_id = send_email(recipient, subject, body, attachment_path=resume_name)
+        attachment_name = resume_attachment_name(str(profile.get("name", "")), resume_name)
+        message_id = send_email(
+            recipient,
+            subject,
+            body,
+            attachment_path=resume_name,
+            attachment_name=attachment_name,
+        )
     except Exception as exc:  # noqa: BLE001 - return local Gmail error to UI
         logger.exception("GMAIL_SEND_FAILED error=%s", exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -136,6 +150,7 @@ def gmail_send(recipient: str = Form(""), subject: str = Form(""), body: str = F
         "sent": True,
         "message_id": message_id,
         "status": "MOCK_SENT" if settings.email_send_mode == "mock" else "SENT",
+        "attachment_name": attachment_name,
         "preview": "logs/mock_email_preview.eml" if settings.email_send_mode == "mock" else "",
     }
 

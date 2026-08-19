@@ -124,7 +124,7 @@ async function sendDraft() {
   if (!subject || !body) { progress.textContent = 'The draft needs a subject and body before sending.'; return; }
   approveButton.disabled = true; gmailConnect.disabled = true; progress.textContent = 'Sending through Gmail...';
   const form = new FormData(); form.append('recipient', candidateEmails[0]); form.append('subject', subject); form.append('body', body);
-  try { const response = await fetch('/gmail/send', { method:'POST', body:form }); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Gmail send failed'); draftState.textContent = data.status === 'MOCK_SENT' ? 'Mock sent' : 'Sent'; progress.textContent = data.status === 'MOCK_SENT' ? 'Mock email preview saved with the candidate resume attached.' : `Email sent to ${candidateEmails[0]} with the candidate resume attached.`; approveButton.textContent = data.status === 'MOCK_SENT' ? '✓ Mock Sent' : '✓ Sent via Gmail'; }
+  try { const response = await fetch('/gmail/send', { method:'POST', body:form }); const data = await response.json(); if (!response.ok) throw new Error(data.detail || 'Gmail send failed'); if (data.attachment_name) attachmentName.textContent = `${data.attachment_name} attached`; draftState.textContent = data.status === 'MOCK_SENT' ? 'Mock sent' : 'Sent'; progress.textContent = data.status === 'MOCK_SENT' ? 'Mock email preview saved with the candidate resume attached.' : `Email sent to ${candidateEmails[0]} with the candidate resume attached.`; approveButton.textContent = data.status === 'MOCK_SENT' ? '✓ Mock Sent' : '✓ Sent via Gmail'; }
   catch (error) { progress.textContent = error.message; approveButton.disabled = false; }
   finally { gmailConnect.disabled = false; }
 }
