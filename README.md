@@ -5,10 +5,9 @@ posting / recruiter message** into a **reviewed, approved, sent** job
 application email — with your resume attached — using your own Gmail
 account.
 
-> **Status: PHASE 2 of 10 implemented.**
-> Screenshot → preprocessing → PaddleOCR (PP-OCRv4) → confidence score →
-> local Qwen3 structured job extraction. Matching, email generation, Gmail
-> sending, and LangGraph orchestration remain in the roadmap.
+> **Status: Core local workflow implemented.**
+> Screenshot → preprocessing → PaddleOCR (PP-OCRv4) → structured job extraction
+> → concise validated email → human approval → Gmail/mock MIME delivery.
 
 ---
 
@@ -16,15 +15,15 @@ account.
 
 1. You upload a screenshot of a job posting, HR email, or LinkedIn message.
 2. OCR extracts the text (PaddleOCR, not an LLM — see [why](#6-why-paddleocr-is-the-primary-extractor)).
-3. A small local LLM (Qwen3-1.7B) turns that text into structured job data:
+3. A small local LLM (Qwen2.5-1.5B) turns that text into structured job data:
    company, role, HR name, recipient email, requirements, deadline.
-4. Your candidate profile + resume are matched against the job requirements.
-5. Qwen3-1.7B drafts an email **in the exact format you asked for** — using
+4. Your candidate profile + resume are used as trusted grounding data.
+5. Qwen2.5-1.5B drafts a concise email **in the exact format you asked for** — using
    only facts that are actually in your profile/resume.
 6. You review, edit, or regenerate the draft. **Nothing sends automatically.**
 7. On your explicit approval, the email (with resume PDF attached) is sent
    through your own Gmail account via OAuth 2.0 and the Gmail API.
-8. The application is logged locally (SQLite).
+8. Mock mode saves a local MIME preview; application history is planned for a later phase.
 
 ## 2. Architecture
 
@@ -47,7 +46,7 @@ Frontend  ->  FastAPI  ->  LangGraph Agent
                        Extracted Text
                               |
                               v
-                        Qwen3 1.7B
+                        Qwen2.5 1.5B
                               |
                               v
                      Structured Job JSON
@@ -59,7 +58,7 @@ Frontend  ->  FastAPI  ->  LangGraph Agent
                      Job/Profile Matching
                               |
                               v
-                        Qwen3 1.7B
+                        Qwen2.5 1.5B
                               |
                               v
                         Email Draft
@@ -105,7 +104,7 @@ project's existing stack.
 
 ### Why Qwen2.5-1.5B for email generation
 The email generation model must be small and fully local — no paid API,
-no sending resume/job content to an external service. Qwen3-1.7B is
+no sending resume/job content to an external service. Qwen2.5-1.5B is
 Qwen2.5-1.5B is capable enough at structured extraction and instruction-following while
 staying light enough to run on a 16GB CPU-oriented machine (see
 [Hardware notes](#8-hardware-notes)).
@@ -141,8 +140,8 @@ job_application_agent/
 │       ├── database/             # SQLite models
 │       └── schemas/              # API schemas
 ├── data/
-│   ├── screenshots/              # uploaded screenshots land here
-│   ├── resumes/                  # your resume PDFs go here (Phase 5+)
+│   ├── screenshots/              # uploaded screenshots; only the newest 5 are kept
+│   ├── resumes/                  # your resume PDF goes here
 │   └── profile/profile.json      # your candidate profile (Phase 3+)
 ├── frontend/                     # Browser UI (HTML, CSS, JavaScript)
 ├── tests/
@@ -200,11 +199,10 @@ hosts above and point `PaddleOCR(...)` at the local model directory (see
 normal internet access for the first run only — after that, everything
 runs fully offline.
 
-## 7. Model setup — Qwen3 / Gemma (via Ollama)
+## 7. Model setup — Qwen2.5 / Gemma (via Ollama)
 
-Phases 2+ (structured job extraction, matching, email generation, vision
-fallback) use **Ollama** to serve Qwen3-1.7B and Gemma 3 4B locally.
-Not required for Phase 1, but to get ready:
+Structured job extraction and email generation use **Ollama** to serve
+Qwen2.5-1.5B locally. Gemma 3 4B remains an optional vision fallback.
 
 ```bash
 # Install Ollama: https://ollama.com/download
@@ -212,19 +210,18 @@ ollama pull qwen2.5:1.5b
 ollama pull gemma3:4b
 ```
 
-Both are referenced by `MODEL_EMAIL` / `MODEL_VISION` in `.env` and will
-be called through `OLLAMA_HOST` (default `http://localhost:11434`) once
-`backend/app/models/qwen.py` and `backend/app/models/gemma_vision.py` are implemented.
+Both are referenced by `MODEL_EMAIL` / `MODEL_VISION` in `.env` and are called
+through `OLLAMA_HOST` (default `http://localhost:11434`).
 
 ## 8. Hardware notes
 
 Tuned for **~16GB RAM, CPU-only** machines:
 - PP-OCRv4 models are small and suitable for local CPU inference.
-- Qwen3-1.7B and Gemma 3 4B are loaded lazily and never simultaneously
+- Qwen2.5-1.5B and Gemma 3 4B are loaded lazily and never simultaneously
   unless a request genuinely needs both (OCR fallback + email generation
   in the same request) — and even then, one is unloaded before the other
   loads if memory pressure requires it (Phase 9+).
-- Prefer quantized Ollama builds (`qwen3:1.7b`, `gemma3:4b` pull the
+- Prefer quantized Ollama builds (`qwen2.5:1.5b`, `gemma3:4b` pull the
   standard quantized tags by default).
 
 ## 9. Environment variables
@@ -284,7 +281,7 @@ Expected response shape:
 }
 ```
 
-## 11. Mock mode (email sending — Phase 6+)
+## 11. Mock mode (email sending)
 
 The first local-model endpoint is available at `POST /extract-job`. It accepts
 the OCR text and the regex-derived `candidate_emails` from `/analyze`, calls
@@ -292,17 +289,18 @@ Ollama's local `/api/generate` endpoint, and validates the response as job JSON.
 The model's recipient email is discarded unless it exactly matches one of the
 OCR-derived candidates, so the local model cannot invent a destination.
 
-Once Gmail sending is implemented, `.env`'s `EMAIL_SEND_MODE` controls it:
-- `mock` (default): builds and validates the MIME message, **never sends**,
-  logs what would have been sent.
-- `gmail`: sends for real via the Gmail API.
+`.env`'s `EMAIL_SEND_MODE` controls delivery:
+- `mock`: builds and validates the nested MIME message, attaches the PDF, and
+  saves `logs/mock_email_preview.eml` without contacting Gmail.
+- `gmail`: sends the approved MIME message through the authenticated Gmail API.
 
-## 12. Real Gmail mode (Phase 6+)
+## 12. Real Gmail mode
 
 Will require a Google Cloud Console OAuth 2.0 Client ID/Secret with the
-minimum Gmail send scope, set via `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
-/ `GOOGLE_REDIRECT_URI` in `.env`. Not yet implemented — see
-[Roadmap](#roadmap).
+minimum Gmail send scope, set via `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+and `GOOGLE_REDIRECT_URI` in `.env`. Click **Connect Gmail**, complete OAuth,
+review the generated draft, and click **Approve & Send**. The backend controls
+the recipient, sender, MIME structure, and candidate resume attachment.
 
 ## 13. Security
 
@@ -368,10 +366,9 @@ pre-download the model manually (see section 6).
 Run `pip install setuptools` — some Python 3.12 environments don't ship
 it in a fresh venv, and `paddle` imports it at module load time.
 
-**Server starts but `/analyze` hangs for a long time on first call**
-That's expected — the first request lazy-loads PaddleOCR and downloads
-model weights. Subsequent calls reuse the already-loaded model and are
-fast.
+**Server startup takes a few seconds**
+The app warms PaddleOCR during startup so the first upload does not pay the
+model initialization cost. Subsequent uploads reuse the loaded model.
 
 ---
 
@@ -385,7 +382,7 @@ Start Ollama and download the local models:
 
 ```powershell
 ollama serve
-ollama pull qwen3:1.7b
+ollama pull qwen2.5:1.5b
 ollama pull gemma3:4b
 .\.venv\Scripts\Activate.ps1
 python run.py
@@ -399,12 +396,12 @@ server-sent events. The draft is never sent automatically.
 
 - [x] **Phase 1** — Screenshot → preprocessing → PaddleOCR → confidence → API response
 - [x] **Phase 2** — OCR text → local Qwen2.5-1.5B via Ollama → structured Job JSON
-- [x] **Phase 3** — Candidate profile + default resume + source text → streamed local Qwen email draft
-- [ ] Phase 4 — Email validation (word count, hallucination/claim checks, format)
-- [ ] Phase 5 — Resume selection and attachment
-- [ ] Phase 6 — Gmail OAuth
-- [ ] Phase 7 — Gmail API mock sending
-- [ ] Phase 8 — Real Gmail sending
+- [x] **Phase 3** — Candidate profile + default resume + source text → validated local Qwen email draft
+- [x] **Phase 4** — Email validation, concise JSON generation, responsive HTML, and MIME formatting
+- [x] **Phase 5** — Resume selection and PDF attachment
+- [x] **Phase 6** — Gmail OAuth
+- [x] **Phase 7** — Gmail API mock sending
+- [x] **Phase 8** — Real Gmail sending
 - [ ] Phase 9 — Full LangGraph orchestration (incl. Gemma vision fallback, prompt-injection guard)
 - [ ] Phase 10 — Application history (SQLite)
 
