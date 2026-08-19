@@ -1,0 +1,34 @@
+# Environment
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Data (user's own uploads/generated content - don't commit)
+data/screenshots/*
+!data/screenshots/.gitkeep
+data/resumes/*
+!data/resumes/.gitkeep
+
+# Database
+*.db
+applications.db
+
+# Logs
+logs/
+*.log
+
+# OAuth tokens / credentials
+token.json
+credentials.json
+Credentials.json
+data/gmail_token.json
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
