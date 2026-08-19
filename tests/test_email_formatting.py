@@ -67,6 +67,20 @@ def test_email_validator_rejects_recipient_and_application_instruction():
     assert any("instructions" in error.lower() for error in result.errors)
 
 
+def test_email_validator_does_not_count_signature_in_word_limit():
+    signature = "\n".join(["Best regards,"] + ["Candidate"] * 20)
+    result = validate_email(
+        "Application",
+        "Dear HR Team,\n\nPlease find my resume attached.\n\n" + signature,
+        "hr@example.com",
+        {},
+        "resume",
+        word_limit=8,
+    )
+
+    assert result.valid
+
+
 def test_mock_send_writes_mime_preview(tmp_path, monkeypatch):
     resume = tmp_path / "Resume.pdf"
     resume.write_bytes(b"%PDF-test")

@@ -40,7 +40,8 @@ def validate_email(
         errors.append("Subject is required")
     if not body.strip():
         errors.append("Body is required")
-    if word_count(body) > word_limit:
+    main_body = re.split(r"\n\s*Best regards,", body, maxsplit=1, flags=re.IGNORECASE)[0]
+    if word_count(main_body) > word_limit:
         errors.append(f"Body exceeds the {word_limit}-word limit")
     if not re.search(r"^Dear\b", body.strip(), re.IGNORECASE):
         errors.append("Email must start with a greeting")
