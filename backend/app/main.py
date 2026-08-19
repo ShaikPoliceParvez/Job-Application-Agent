@@ -196,6 +196,7 @@ SSE_HEADERS = {
 async def draft(
     message: str = Form(""),
     instructions: str = Form(""),
+    recipient: str = Form(""),
     file: UploadFile | None = File(None),
 ) -> StreamingResponse:
     """OCR or accept pasted text, then stream a local Qwen email draft."""
@@ -231,8 +232,8 @@ async def draft(
             yield _sse("extracted_text", {"text": posting})
             profile, resume, resume_name = load_candidate_context()
             yield _sse("status", {"message": "Writing a draft with local Qwen...", "resume_name": resume_name})
-            recipient = extract_email_candidates(posting)[:1]
-            for chunk in stream_draft(posting, profile, resume, instructions, recipient[0] if recipient else ""):
+            trusted_recipient = recipient.strip() or next(iter(extract_email_candidates(posting)), "")
+            for chunk in stream_draft(posting, profile, resume, instructions, trusted_recipient):
                 yield _sse("draft_token", {"text": chunk})
             yield _sse("complete", {"resume_name": resume_name, "extracted_text": posting})
         except Exception as exc:  # noqa: BLE001 - streamed to the local UI

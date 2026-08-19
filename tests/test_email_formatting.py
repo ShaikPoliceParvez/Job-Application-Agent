@@ -124,6 +124,26 @@ def test_structured_generation_regenerates_after_validation_failure(monkeypatch)
     monkeypatch.setattr("backend.app.agents.draft.get_job_model", lambda: model)
     result = generate_email("Python internship", {"name": "Parvez"}, "Resume", "hr@example.com")
 
-    assert result.subject == "Application"
+    assert result.subject == "Application - Parvez"
     assert "Best regards" in result.body
     assert model.calls == 2
+
+
+def test_resume_identity_fills_subject_and_signature(monkeypatch):
+    class FakeModel:
+        def generate(self, prompt, **kwargs):
+            assert "2004parvez@gmail.com" in prompt
+            assert "8341765885" in prompt
+            return '{"subject":"Application for AI/ML Engineer Intern - Your Name","body":"Dear HR Team,\\n\\nPlease find my resume attached.\\n\\nBest regards,\\nShaik Police Parvez\\nIndian Institute of Technology Hyderabad\\n2004parvez@gmail.com\\n8341765885"}'
+
+    monkeypatch.setattr("backend.app.agents.draft.get_job_model", lambda: FakeModel())
+    result = generate_email(
+        "AI/ML Engineer Intern at InnovateAI",
+        {},
+        "Shaik Police Parvez\nB.Tech - Computer Science\nIndian Institute of Technology Hyderabad\n8341765885 2004parvez@gmail.com",
+        "hr@example.com",
+    )
+
+    assert result.subject == "Application for AI/ML Engineer Intern - Shaik Police Parvez"
+    assert "2004parvez@gmail.com" in result.body
+    assert "8341765885" in result.body

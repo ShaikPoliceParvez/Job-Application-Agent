@@ -28,7 +28,7 @@ def test_graph_stops_for_human_approval():
             {"source_text": "Python internship", "approved": False}
         )
 
-    assert result["email_subject"] == "Application"
+    assert result["email_subject"] == "Application - Candidate"
     assert sender.calls == []
 
 

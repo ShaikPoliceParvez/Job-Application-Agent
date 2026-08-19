@@ -62,7 +62,7 @@ def test_draft_streams_pasted_text_and_model_tokens():
 
         response = client.post(
             "/draft",
-            data={"message": "We are hiring a Python engineer."},
+            data={"message": "We are hiring a Python engineer.", "recipient": "hr@example.com"},
         )
 
     assert response.status_code == 200

@@ -58,12 +58,57 @@ def _signature(profile: dict) -> str:
     return "\n".join(line.strip() for line in lines if isinstance(line, str) and line.strip())
 
 
+def _resume_profile(profile: dict, resume: str) -> dict:
+    """Fill missing identity fields from extracted resume text only."""
+    enriched = dict(profile)
+    lines = [line.strip() for line in resume.splitlines() if line.strip()]
+    if not enriched.get("name") and lines:
+        enriched["name"] = re.sub(r"[^A-Za-z .'-]", "", lines[0]).strip()
+    if not enriched.get("email"):
+        match = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", resume)
+        if match:
+            enriched["email"] = match.group(0)
+    if not enriched.get("phone"):
+        match = re.search(r"(?<!\d)(?:\+?\d[\d ()-]{8,}\d)(?!\d)", resume)
+        if match:
+            enriched["phone"] = re.sub(r"\D", "", match.group(0))
+    if not _education_name(enriched):
+        for line in lines[:12]:
+            if re.search(r"\b(?:institute|university|college|iit|technology)\b", line, re.I):
+                enriched["college"] = line
+                break
+    links = dict(enriched.get("links") or {})
+    for key in ("linkedin", "github"):
+        if not links.get(key):
+            match = re.search(rf"(?:https?://)?(?:www\.)?{key}\.com/[A-Za-z0-9_./-]+", resume, re.I)
+            if match:
+                links[key] = match.group(0)
+    enriched["links"] = links
+    return enriched
+
+
+def _subject_with_candidate_name(subject: str, profile: dict) -> str:
+    name = str(profile.get("name", "")).strip()
+    if name:
+        subject = re.sub(r"(?:\[?your\s+name\]?|\[?candidate\s+name\]?)", name, subject, flags=re.I)
+        if name.lower() not in subject.lower():
+            subject = f"{subject.rstrip(' -')} - {name}"
+    return subject
+
+
+def _with_verified_signature(body: str, profile: dict) -> str:
+    signature = _signature(profile)
+    main_body = re.split(r"\n\s*Best regards,", body, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+    return f"{main_body}\n\n{signature}" if main_body else signature
+
+
 def _requested_word_limit(instructions: str) -> int:
     match = re.search(r"\b(?:under|max(?:imum)?|in|within|keep it to)\s+(\d+)\s+words?\b", instructions, re.I)
     return max(30, min(int(match.group(1)), 500)) if match else settings.email_word_limit
 
 
 def build_draft_prompt(posting: str, profile: dict, resume: str, instructions: str = "") -> str:
+    profile = _resume_profile(profile, resume)
     signature = _signature(profile)
     limit = _requested_word_limit(instructions)
     return f"""Write a concise professional job application email from the trusted data below.
@@ -72,6 +117,8 @@ The body must be plain text, not HTML. Do not output recipient or sender fields.
 
 EMAIL RULES:
 - Body maximum: {limit} words. Prefer 80-100 words when no smaller limit is requested.
+- Subject must be concise and follow: Application for [specific job title] - [full candidate name].
+    Never use "Your Name", "Candidate Name", or any placeholder.
 - Structure: greeting; interest in the specific role/company; one short paragraph
   with only 2-3 relevant grounded qualifications; brief resume-attached sentence;
   exact verified signature after the body.
@@ -127,6 +174,7 @@ def generate_email(
     instructions: str = "",
     current_draft: str = "",
 ) -> GeneratedEmail:
+    profile = _resume_profile(profile, resume)
     prompt = build_draft_prompt(posting, profile, resume, instructions)
     if current_draft:
         prompt += f"\nCURRENT EMAIL TO REVISE:\n{current_draft}\n"
@@ -139,6 +187,10 @@ def generate_email(
         )
         try:
             email = _parse_generated(raw)
+            email = GeneratedEmail(
+                _subject_with_candidate_name(email.subject, profile),
+                _with_verified_signature(email.body, profile),
+            )
             result = validate_email(
                 email.subject,
                 email.body,

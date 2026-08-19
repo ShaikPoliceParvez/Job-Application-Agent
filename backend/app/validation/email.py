@@ -38,6 +38,8 @@ def validate_email(
         errors.append("Recipient email is missing or invalid")
     if not subject.strip():
         errors.append("Subject is required")
+    if re.search(r"your\s+name|candidate\s+name|\[name\]", subject, re.I):
+        errors.append("Subject contains a candidate-name placeholder")
     if not body.strip():
         errors.append("Body is required")
     main_body = re.split(r"\n\s*Best regards,", body, maxsplit=1, flags=re.IGNORECASE)[0]

@@ -97,7 +97,7 @@ async function analyze() {
 async function generateDraft() {
   if (!extractedText) return;
   regenerateButton.disabled = true; refineButton.disabled = true; setDraftEditing(false); draftState.textContent = 'Writing...'; draftEmpty.classList.add('hidden'); draft.classList.remove('hidden'); draft.value = ''; approveButton.disabled = true;
-  const form = new FormData(); form.append('message', extractedText); form.append('instructions', instructions.value);
+  const form = new FormData(); form.append('message', extractedText); form.append('instructions', instructions.value); form.append('recipient', candidateEmails[0] || '');
   try { const response = await fetch('/draft', { method:'POST', body:form }); if (!response.ok) throw new Error((await response.json()).detail); await readStream(response, event => { if (event.type === 'status') progress.textContent = event.data.message; if (event.type === 'draft_token') draft.value += event.data.text; if (event.type === 'complete') { draftState.textContent = 'Draft ready'; approveButton.disabled = false; splitDraft(); renderDraftPreview(); } if (event.type === 'error') throw new Error(event.data.message); }); }
   catch (error) { progress.textContent = error.message; draftState.textContent = 'Needs attention'; } finally { regenerateButton.disabled = false; refineButton.disabled = !draft.value.trim(); }
 }
