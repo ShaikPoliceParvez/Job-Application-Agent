@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.app.config import settings
+from ..config import settings
 
 
 def configured() -> bool:

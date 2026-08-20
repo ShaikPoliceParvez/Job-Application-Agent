@@ -21,8 +21,8 @@ try:
 except ImportError:  # Python runtimes without the optional OCR stack
     np = None  # type: ignore[assignment]
 
-from backend.app.config import settings
-from backend.app.models.base import OCRModel
+from ..config import settings
+from .base import OCRModel
 
 logger = logging.getLogger("models.paddle_ocr")
 
@@ -151,7 +151,7 @@ class PaddleOCRModel(OCRModel):
 
         full_text = "\n".join(b["text"] for b in blocks if b["text"])
 
-        from backend.app.ocr.confidence import calculate_ocr_confidence
+        from ..ocr.confidence import calculate_ocr_confidence
 
         confidence = calculate_ocr_confidence(blocks)
 

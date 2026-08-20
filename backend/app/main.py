@@ -26,17 +26,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.app.config import settings
-from backend.app.logging_config import configure_logging
-from backend.app.models.ocr_api import extract_email_candidates, extract_text as extract_external_ocr
-from backend.app.ocr.confidence import is_low_confidence
-from backend.app.ocr.storage import retain_recent_screenshots
-from backend.app.schemas.job import JobExtractionRequest, JobExtractionResponse
-from backend.app.schemas.ocr import AnalyzeResponse
-from backend.app.agents.job_extraction import extract_job
-from backend.app.agents.draft import stream_draft, stream_refinement
-from backend.app.profile.loader import load_candidate_context
-from backend.app.gmail.service import (
+from .config import settings
+from .logging_config import configure_logging
+from .models.ocr_api import extract_email_candidates, extract_text as extract_external_ocr
+from .ocr.confidence import is_low_confidence
+from .ocr.storage import retain_recent_screenshots
+from .schemas.job import JobExtractionRequest, JobExtractionResponse
+from .schemas.ocr import AnalyzeResponse
+from .agents.job_extraction import extract_job
+from .agents.draft import stream_draft, stream_refinement
+from .profile.loader import load_candidate_context
+from .gmail.service import (
     authorization_url,
     finish_authorization,
     gmail_account,
@@ -44,8 +44,8 @@ from backend.app.gmail.service import (
     resume_attachment_name,
     send_email,
 )
-from backend.app.storage.appwrite import configured as appwrite_storage_configured
-from backend.app.storage.appwrite import upload_resume as upload_resume_to_appwrite
+from .storage.appwrite import configured as appwrite_storage_configured
+from .storage.appwrite import upload_resume as upload_resume_to_appwrite
 
 configure_logging()
 logger = logging.getLogger("main")
@@ -82,8 +82,8 @@ MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
 def _extract_ocr(image_path: str, image_bytes: bytes, filename: str, content_type: str) -> dict:
     if settings.ocr_mode == "api":
         return extract_external_ocr(image_bytes, filename, content_type)
-    from backend.app.models.paddle_ocr import get_ocr_model
-    from backend.app.ocr.preprocessing import preprocess_image
+    from .models.paddle_ocr import get_ocr_model
+    from .ocr.preprocessing import preprocess_image
 
     return get_ocr_model().extract_text(preprocess_image(image_path))
 

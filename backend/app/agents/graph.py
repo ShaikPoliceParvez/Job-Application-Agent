@@ -11,13 +11,13 @@ from typing import Any, Protocol, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from backend.app.agents.draft import generate_email
-from backend.app.agents.job_extraction import extract_job
-from backend.app.config import settings
-from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
-from backend.app.ocr.preprocessing import preprocess_image
-from backend.app.profile.loader import load_candidate_context
-from backend.app.schemas.job import JobPosting
+from .draft import generate_email
+from .job_extraction import extract_job
+from ..config import settings
+from ..models.paddle_ocr import extract_email_candidates, get_ocr_model
+from ..ocr.preprocessing import preprocess_image
+from ..profile.loader import load_candidate_context
+from ..schemas.job import JobPosting
 
 
 class GmailMCPSender(Protocol):

@@ -4,22 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
-import types
-from pathlib import Path
 from typing import Any
 
 import httpx
 
-# Appwrite uses ``backend/`` as the source root, so the parent package named
-# ``backend`` is not importable there. Keep the existing absolute imports
-# working without changing the application modules or local setup.
-if "backend" not in sys.modules:
-	package = types.ModuleType("backend")
-	package.__path__ = [str(Path(__file__).resolve().parent)]
-	sys.modules["backend"] = package
-
-from backend.app.main import app
+from app.main import app
 
 
 def _body(request: Any) -> bytes:

@@ -12,9 +12,9 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
-from backend.app.config import settings
-from backend.app.storage.appwrite import configured as appwrite_configured
-from backend.app.storage.appwrite import download_resume
+from ..config import settings
+from ..storage.appwrite import configured as appwrite_configured
+from ..storage.appwrite import download_resume
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 _oauth_state = ""

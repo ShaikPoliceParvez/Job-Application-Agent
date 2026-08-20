@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from backend.app.models.ollama import get_job_model
-from backend.app.schemas.job import JobPosting
+from ..models.ollama import get_job_model
+from ..schemas.job import JobPosting
 
 JOB_PROMPT = """Extract a job posting from the OCR text below.
 Return JSON only with exactly these keys: company, role, hr_name,

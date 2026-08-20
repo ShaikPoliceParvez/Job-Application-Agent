@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import sys
 
-from backend.app.config import settings
+from .config import settings
 
 
 def configure_logging() -> None:
