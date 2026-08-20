@@ -6,12 +6,27 @@ import json
 from pathlib import Path
 
 from backend.app.config import settings
+from backend.app.storage.appwrite import configured as appwrite_configured
+from backend.app.storage.appwrite import download_resume
+
+
+def _resume_text(content: bytes, filename: str) -> str:
+    if filename.lower().endswith(".pdf"):
+        from io import BytesIO
+        from pypdf import PdfReader
+
+        return "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(content)).pages)
+    return content.decode("utf-8", errors="replace")
 
 
 def load_candidate_context() -> tuple[dict, str, str]:
     profile: dict = {}
     if settings.profile_path.exists():
         profile = json.loads(settings.profile_path.read_text(encoding="utf-8"))
+
+    if appwrite_configured() and settings.appwrite_resume_file_id:
+        resume_name = settings.appwrite_resume_filename or "resume.pdf"
+        return profile, _resume_text(download_resume(), resume_name), resume_name
 
     resume_files = sorted(
         path

@@ -8,7 +8,9 @@ what the app will eventually read.
 """
 
 from pathlib import Path
+from typing import Literal
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -35,11 +37,20 @@ class Settings(BaseSettings):
     ocr_warmup_on_startup: bool = True
     screenshot_retention_count: int = 5
 
-    # ---- LLMs (used from PHASE 2 onward, via local Ollama) ------------
-    model_email: str = "qwen2.5:1.5b"     # served locally through Ollama
-    model_vision: str = "gemma3:4b"       # served locally through Ollama (fallback only)
-    ollama_host: str = "http://localhost:11434"
+    # ---- LLMs (used from PHASE 2 onward through the Ollama adapter) -----
+    llm_mode: Literal["cloud", "local"] = Field(default="cloud", validation_alias=AliasChoices("LLM_MODE"))
+    ollama_base_url: str = Field(
+        default="https://ollama.com",
+        validation_alias=AliasChoices("OLLAMA_BASE_URL", "OLLAMA_HOST"),
+    )
+    ollama_api_key: str | None = Field(default=None, validation_alias=AliasChoices("OLLAMA_API_KEY"))
+    ollama_model: str = Field(
+        default="gemma2:2b-instruct-q2_K",
+        validation_alias=AliasChoices("OLLAMA_MODEL", "MODEL_EMAIL"),
+    )
+    model_vision: str = "gemma3:4b"
     ollama_timeout_seconds: float = 120.0
+    ollama_max_retries: int = 2
     ollama_keep_alive: str | int = -1
     ollama_num_ctx: int = 4096
     ollama_num_predict: int = 170
@@ -54,6 +65,14 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/gmail/callback"
     google_token_path: Path = Path("data/gmail_token.json")
+
+    # ---- Appwrite Storage ---------------------------------------------
+    appwrite_endpoint: str = "https://cloud.appwrite.io/v1"
+    appwrite_project_id: str = ""
+    appwrite_api_key: str = ""
+    appwrite_bucket_id: str = ""
+    appwrite_resume_file_id: str = ""
+    appwrite_resume_filename: str = "resume.pdf"
 
     # ---- Database (PHASE 9+) -------------------------------------------
     database_url: str = "sqlite:///applications.db"

@@ -29,3 +29,4 @@ pypdf>=5.0
 langgraph>=0.2.0
 google-api-python-client>=2.140.0
 google-auth-oauthlib>=1.2.1
+appwrite>=6.0.0

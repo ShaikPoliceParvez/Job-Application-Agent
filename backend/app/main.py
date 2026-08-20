@@ -3,7 +3,7 @@ Job Application Agent — FastAPI entrypoint.
 
 PHASE 1-2 (per spec section 41):
 
-    Screenshot -> preprocessing -> PP-OCRv4 -> confidence -> local Qwen job extraction
+    Screenshot -> preprocessing -> PP-OCRv4 -> confidence -> Ollama job extraction
 
 POST /analyze accepts an image and returns extracted text, an aggregate
 confidence score, per-block detections, and any email addresses found by
@@ -45,13 +45,15 @@ from backend.app.gmail.service import (
     resume_attachment_name,
     send_email,
 )
+from backend.app.storage.appwrite import configured as appwrite_storage_configured
+from backend.app.storage.appwrite import upload_resume as upload_resume_to_appwrite
 
 configure_logging()
 logger = logging.getLogger("main")
 
 app = FastAPI(
-    title="Job Application Agent — Phase 2 (Local Models)",
-    description="Screenshot -> PaddleOCR -> local Ollama models -> job data",
+    title="Job Application Agent",
+    description="Screenshot -> PaddleOCR -> Ollama models -> job data",
     version="0.1.0-phase1",
 )
 
@@ -79,7 +81,14 @@ MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
 @app.get("/health")
 def health() -> dict:
     profile, _, resume_name = load_candidate_context()
-    return {"status": "ok", "phase": 3, "profile_loaded": bool(profile), "resume_name": resume_name}
+    return {
+        "status": "ok",
+        "phase": 3,
+        "profile_loaded": bool(profile),
+        "resume_name": resume_name,
+        "llm_provider": "ollama_cloud" if settings.llm_mode == "cloud" else "ollama_local",
+        "model": settings.ollama_model,
+    }
 
 
 @app.get("/resume")
@@ -89,6 +98,8 @@ def resume_status() -> dict:
     return {
         "configured": bool(resume_name),
         "name": resume_name,
+        "storage": "appwrite" if appwrite_storage_configured() and settings.appwrite_resume_file_id else "local",
+        "file_id": settings.appwrite_resume_file_id if appwrite_storage_configured() else "",
         "size_bytes": resume_path.stat().st_size if resume_path and resume_path.exists() else 0,
         "text_loaded": bool(resume_text.strip()),
     }
@@ -157,7 +168,7 @@ def gmail_send(recipient: str = Form(""), subject: str = Form(""), body: str = F
 
 
 @app.post("/resume")
-async def upload_resume(file: UploadFile = File(...)) -> dict:
+async def upload_resume(file: UploadFile = File(...), file_id: str = Form("")) -> dict:
     allowed = {".pdf", ".txt", ".md", ".json"}
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in allowed:
@@ -165,6 +176,13 @@ async def upload_resume(file: UploadFile = File(...)) -> dict:
     raw = await file.read()
     if not raw or len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=400, detail="Resume is empty or exceeds the upload limit.")
+    if appwrite_storage_configured():
+        try:
+            stored = upload_resume_to_appwrite(raw, Path(file.filename or "resume.pdf").name, file_id)
+        except Exception as exc:  # noqa: BLE001 - return safe storage error to UI
+            logger.exception("APPWRITE_RESUME_UPLOAD_FAILED error=%s", exc)
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"configured": True, "storage": "appwrite", **stored}
     safe_name = f"default_resume{suffix}"
     save_path = settings.resume_directory / safe_name
     for existing_path in settings.resume_directory.iterdir():
@@ -200,7 +218,7 @@ async def draft(
     recipient: str = Form(""),
     file: UploadFile | None = File(None),
 ) -> StreamingResponse:
-    """OCR or accept pasted text, then stream a local Qwen email draft."""
+    """OCR or accept pasted text, then stream an Ollama email draft."""
     if not message.strip() and file is None:
         raise HTTPException(status_code=400, detail="Provide pasted job text or a screenshot.")
 
@@ -233,7 +251,7 @@ async def draft(
                 raise ValueError("No readable job text was found.")
             yield _sse("extracted_text", {"text": posting})
             profile, resume, resume_name = load_candidate_context()
-            yield _sse("status", {"message": "Writing a draft with local Qwen...", "resume_name": resume_name})
+            yield _sse("status", {"message": "Writing a draft with Ollama...", "resume_name": resume_name})
             trusted_recipient = recipient.strip() or next(iter(extract_email_candidates(posting)), "")
             for chunk in stream_draft(posting, profile, resume, instructions, trusted_recipient):
                 yield _sse("draft_token", {"text": chunk})
@@ -259,7 +277,7 @@ async def refine(
     def events() -> Iterator[str]:
         try:
             profile, resume, resume_name = load_candidate_context()
-            yield _sse("status", {"message": "Applying your edit with local Qwen...", "resume_name": resume_name})
+            yield _sse("status", {"message": "Applying your edit with Ollama...", "resume_name": resume_name})
             recipient = extract_email_candidates(posting)[:1]
             for chunk in stream_refinement(
                 current_draft, instruction, posting, profile, resume, recipient[0] if recipient else ""
@@ -275,7 +293,7 @@ async def refine(
 
 @app.post("/extract-job", response_model=JobExtractionResponse)
 def extract_job_endpoint(request: JobExtractionRequest) -> JobExtractionResponse:
-    """Extract structured job fields with the locally served Qwen model."""
+    """Extract structured job fields with the configured Ollama model."""
     try:
         job = extract_job(request.text, request.candidate_emails)
         return JobExtractionResponse(success=True, job=job)

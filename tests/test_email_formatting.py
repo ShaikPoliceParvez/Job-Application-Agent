@@ -158,4 +158,4 @@ def test_verbose_model_output_is_trimmed_before_validation(monkeypatch):
     monkeypatch.setattr("backend.app.agents.draft.get_job_model", lambda: FakeModel())
     result = generate_email("Python internship", {"name": "Parvez"}, "Resume", "hr@example.com")
 
-    assert len(result.body.split("Best regards,")[0].split()) <= 120
+    assert len(result.body.split("Best regards,")[0].split()) <= 110

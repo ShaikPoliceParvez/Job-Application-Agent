@@ -175,9 +175,12 @@ def _trim_main_body(body: str, word_limit: int) -> str:
     signature_match = re.search(r"\n\s*Best regards,", body, re.I)
     main = body[: signature_match.start()] if signature_match else body
     signature = body[signature_match.start():].strip() if signature_match else ""
-    words = re.findall(r"\S+", main.strip())
-    if len(words) > word_limit:
-        main = " ".join(words[:word_limit]).rstrip(" ,;:") + "."
+    words = re.findall(r"\b[\w'’-]+\b", main, re.UNICODE)
+    # Leave a small margin for model punctuation/tokenization differences.
+    safe_limit = max(1, word_limit - 10)
+    if len(words) > safe_limit:
+        main_words = re.findall(r"\S+", main.strip())[:safe_limit]
+        main = " ".join(main_words).rstrip(" ,;:") + "."
     return f"{main.strip()}\n\n{signature}".strip() if signature else main.strip()
 
 

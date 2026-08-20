@@ -5,7 +5,7 @@ posting / recruiter message** into a **reviewed, approved, sent** job
 application email — with your resume attached — using your own Gmail
 account.
 
-> **Status: Core local workflow implemented.**
+> **Status: Core workflow implemented with configurable local or Ollama Cloud inference.**
 > Screenshot → preprocessing → PaddleOCR (PP-OCRv4) → structured job extraction
 > → concise validated email → human approval → Gmail/mock MIME delivery.
 
@@ -15,10 +15,10 @@ account.
 
 1. You upload a screenshot of a job posting, HR email, or LinkedIn message.
 2. OCR extracts the text (PaddleOCR, not an LLM — see [why](#6-why-paddleocr-is-the-primary-extractor)).
-3. A small local LLM (Qwen2.5-1.5B) turns that text into structured job data:
+3. The configured Ollama model turns that text into structured job data:
    company, role, HR name, recipient email, requirements, deadline.
 4. Your candidate profile + resume are used as trusted grounding data.
-5. Qwen2.5-1.5B drafts a concise email **in the exact format you asked for** — using
+5. The same Ollama model drafts a concise email **in the exact format you asked for** — using
    only facts that are actually in your profile/resume.
 6. You review, edit, or regenerate the draft. **Nothing sends automatically.**
 7. On your explicit approval, the email (with resume PDF attached) is sent
@@ -199,19 +199,28 @@ hosts above and point `PaddleOCR(...)` at the local model directory (see
 normal internet access for the first run only — after that, everything
 runs fully offline.
 
-## 7. Model setup — Qwen2.5 / Gemma (via Ollama)
+## 7. Model setup — Ollama local or cloud
 
-Structured job extraction and email generation use **Ollama** to serve
-Qwen2.5-1.5B locally. Gemma 3 4B remains an optional vision fallback.
+Structured job extraction and email generation use the existing Ollama adapter.
+Set `LLM_MODE=cloud` for Ollama Cloud or `LLM_MODE=local` for a local Ollama
+server. The API key is read only by the backend and is never sent to the browser.
 
 ```bash
-# Install Ollama: https://ollama.com/download
-ollama pull qwen2.5:1.5b
-ollama pull gemma3:4b
+# Cloud
+LLM_MODE=cloud
+OLLAMA_BASE_URL=https://ollama.com
+OLLAMA_API_KEY=your_ollama_api_key_here
+OLLAMA_MODEL=your_cloud_model_here
+
+# Local development
+LLM_MODE=local
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=your_local_model
 ```
 
-Both are referenced by `MODEL_EMAIL` / `MODEL_VISION` in `.env` and are called
-through `OLLAMA_HOST` (default `http://localhost:11434`).
+`OLLAMA_MODEL` must name a model available in the selected Ollama environment.
+PaddleOCR remains local to the backend and sends extracted text, not screenshots,
+to the LLM.
 
 ## 8. Hardware notes
 
@@ -243,6 +252,10 @@ Key Phase 1 variables:
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `LLM_MODE` | `cloud` | Select `cloud` or `local` Ollama inference |
+| `OLLAMA_BASE_URL` | `https://ollama.com` | Ollama API base URL |
+| `OLLAMA_API_KEY` | unset | Backend-only Ollama Cloud credential |
+| `OLLAMA_MODEL` | existing local model default | Model served by the selected Ollama environment |
 | `MODEL_OCR` | `PP-OCRv4` | PaddleOCR model version to use (`PP-OCR`, `PP-OCRv2`, `PP-OCRv3`, or `PP-OCRv4` for the pinned package) |
 | `OCR_CONFIDENCE_THRESHOLD` | `0.80` | Below this, later phases trigger the Gemma vision fallback |
 | `SCREENSHOT_DIRECTORY` | `data/screenshots` | Where uploaded screenshots are saved |

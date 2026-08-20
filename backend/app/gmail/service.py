@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any
 
 from backend.app.config import settings
+from backend.app.storage.appwrite import configured as appwrite_configured
+from backend.app.storage.appwrite import download_resume
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 _oauth_state = ""
@@ -143,18 +145,24 @@ def build_mime_message(
 
     if not attachment_path:
         raise ValueError("Configure a candidate resume before sending")
-    source = Path(attachment_path)
-    if not source.is_absolute():
-        source = settings.resume_directory / source
-    source = source.resolve()
-    resume_root = settings.resume_directory.resolve()
-    if resume_root not in source.parents or not source.is_file():
-        raise ValueError("Configured candidate resume could not be found")
-    if source.suffix.lower() != ".pdf":
+    if appwrite_configured() and settings.appwrite_resume_file_id:
+        attachment_bytes = download_resume()
+        source_name = settings.appwrite_resume_filename or attachment_path
+    else:
+        source = Path(attachment_path)
+        if not source.is_absolute():
+            source = settings.resume_directory / source
+        source = source.resolve()
+        resume_root = settings.resume_directory.resolve()
+        if resume_root not in source.parents or not source.is_file():
+            raise ValueError("Configured candidate resume could not be found")
+        attachment_bytes = source.read_bytes()
+        source_name = source.name
+    if Path(source_name).suffix.lower() != ".pdf":
         raise ValueError("Candidate resume attachment must be a PDF")
-    attachment = MIMEApplication(source.read_bytes(), _subtype="pdf")
+    attachment = MIMEApplication(attachment_bytes, _subtype="pdf")
     attachment.add_header(
-        "Content-Disposition", "attachment", filename=attachment_name or source.name
+        "Content-Disposition", "attachment", filename=attachment_name or source_name
     )
     message.attach(attachment)
     return message
