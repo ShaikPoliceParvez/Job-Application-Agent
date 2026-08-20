@@ -22,6 +22,8 @@ class Settings(BaseSettings):
         protected_namespaces=("settings_",),
     )
 
+    app_env: Literal["local", "production"] = "local"
+
     # ---- Paths -------------------------------------------------------
     base_dir: Path = Path(__file__).resolve().parent.parent.parent
     screenshot_directory: Path = Path("data/screenshots")

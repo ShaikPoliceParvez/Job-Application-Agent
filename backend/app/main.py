@@ -65,7 +65,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-if FRONTEND_DIRECTORY.is_dir():
+if settings.app_env != "production" and FRONTEND_DIRECTORY.is_dir():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
 
 
@@ -203,8 +203,10 @@ async def upload_resume(file: UploadFile = File(...), file_id: str = Form("")) -
     return {"configured": True, "name": safe_name, "size_bytes": len(raw)}
 
 
-@app.get("/")
-def frontend() -> FileResponse:
+@app.get("/", response_model=None)
+def frontend() -> FileResponse | dict:
+    if settings.app_env == "production":
+        return {"status": "ok", "service": "job-application-agent"}
     return FileResponse(
         FRONTEND_DIRECTORY / "index.html",
         headers={"Cache-Control": "no-store, max-age=0"},
