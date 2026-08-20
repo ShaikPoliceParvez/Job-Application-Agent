@@ -60,12 +60,13 @@ FRONTEND_DIRECTORY = Path(__file__).resolve().parent.parent.parent / "frontend"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten before any non-local deployment
+    allow_origins=[origin.strip() for origin in settings.cors_allowed_origins.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
+if FRONTEND_DIRECTORY.is_dir():
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
 
 
 @app.on_event("startup")
@@ -79,7 +80,7 @@ MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
 
 
 def _extract_ocr(image_path: str, image_bytes: bytes, filename: str, content_type: str) -> dict:
-    if settings.ocr_api_url:
+    if settings.ocr_mode == "api":
         return extract_external_ocr(image_bytes, filename, content_type)
     from backend.app.models.paddle_ocr import get_ocr_model
     from backend.app.ocr.preprocessing import preprocess_image
@@ -92,6 +93,7 @@ def health() -> dict:
     profile, _, resume_name = load_candidate_context()
     return {
         "status": "ok",
+        "service": "job-application-agent",
         "phase": 3,
         "profile_loaded": bool(profile),
         "resume_name": resume_name,
