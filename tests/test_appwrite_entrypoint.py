@@ -4,8 +4,8 @@ from backend.main import _body, _dispatch, main
 
 
 class MockResponse:
-    def json(self, body, status_code=200):
-        return {"body": body, "status_code": status_code}
+    def json(self, body, status_code=200, headers=None):
+        return {"body": body, "status_code": status_code, "headers": headers or {}}
 
     def text(self, body, status_code=200, headers=None):
         return {"body": body, "status_code": status_code, "headers": headers or {}}
@@ -36,6 +36,17 @@ def test_appwrite_entrypoint_returns_fastapi_response():
     assert result["body"]["status"] == "ok"
     assert result["body"]["service"] == "job-application-agent"
     assert context.errors == []
+
+
+def test_appwrite_entrypoint_preserves_cors_response_headers():
+    context = MockContext()
+    context.req.path = "/gmail/status"
+    context.req.headers["origin"] = "https://job-application-agent.appwrite.network"
+
+    result = main(context)
+
+    assert result["status_code"] == 200
+    assert result["headers"]["access-control-allow-origin"] == "https://job-application-agent.appwrite.network"
 
 
 def test_appwrite_entrypoint_preserves_binary_request_body():

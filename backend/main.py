@@ -107,7 +107,7 @@ def main(context: Any) -> Any:
 	content_type = response.headers.get("content-type", "")
 	if "application/json" in content_type:
 		try:
-			return context.res.json(response.json(), response.status_code)
+			return context.res.json(response.json(), response.status_code, dict(response.headers))
 		except (ValueError, json.JSONDecodeError):
 			pass
 	return context.res.text(response.text, response.status_code, {"Content-Type": content_type or "text/plain"})
