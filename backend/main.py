@@ -22,26 +22,53 @@ from app.main import app
 def _body(request: Any) -> bytes:
 	# Appwrite's text body accessor can try to decode multipart/PDF bytes.
 	# Prefer the binary accessor, but tolerate runtimes where reading it fails.
+	def coerce(value: Any) -> bytes | None:
+		if isinstance(value, bytes):
+			return value
+		if isinstance(value, bytearray):
+			return bytes(value)
+		if isinstance(value, str):
+			return value.encode("latin-1")
+		if value is None or isinstance(value, (dict, list)):
+			return None
+		return bytes(value)
+
 	try:
 		binary = getattr(request, "bodyBinary", None)
 	except (UnicodeDecodeError, TypeError, ValueError):
 		binary = None
 	if binary:
-		if isinstance(binary, bytes):
+		return coerce(binary) or b""
+
+	# Some Appwrite Python runtimes expose bodyBinary through a failing
+	# descriptor while retaining the raw value on the request instance.
+	for attribute in ("body_binary", "bodyRaw", "body_raw", "rawBody", "raw_body", "_bodyBinary", "_body_binary"):
+		try:
+			binary = coerce(getattr(request, attribute, None))
+		except (UnicodeDecodeError, TypeError, ValueError):
+			binary = None
+		if binary:
 			return binary
-		if isinstance(binary, bytearray):
-			return bytes(binary)
-		if isinstance(binary, str):
-			return binary.encode("latin-1")
-		return bytes(binary)
+	try:
+		request_values = vars(request)
+	except TypeError:
+		request_values = {}
+	for attribute, value in request_values.items():
+		if "body" in attribute.lower() or "raw" in attribute.lower():
+			try:
+				binary = coerce(value)
+			except (UnicodeDecodeError, TypeError, ValueError):
+				binary = None
+			if binary:
+				return binary
+
 	try:
 		value = getattr(request, "body", b"")
 	except (UnicodeDecodeError, TypeError, ValueError):
 		value = b""
-	if isinstance(value, bytes):
-		return value
-	if isinstance(value, bytearray):
-		return bytes(value)
+	binary = coerce(value)
+	if binary is not None:
+		return binary
 	if isinstance(value, (dict, list)):
 		return json.dumps(value).encode("utf-8")
 	return str(value or "").encode("utf-8")

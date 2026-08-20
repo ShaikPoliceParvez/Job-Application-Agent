@@ -44,6 +44,17 @@ def test_appwrite_entrypoint_preserves_binary_request_body():
     assert _body(request) == b"%PDF\x89\x00binary"
 
 
+def test_appwrite_entrypoint_falls_back_when_binary_accessor_fails():
+    class RequestWithBrokenBinaryAccessor:
+        _bodyBinary = b"%PDF\x89\x00binary"
+
+        @property
+        def bodyBinary(self):
+            raise UnicodeDecodeError("utf-8", b"\x89", 0, 1, "invalid start byte")
+
+    assert _body(RequestWithBrokenBinaryAccessor()) == b"%PDF\x89\x00binary"
+
+
 def test_appwrite_entrypoint_forwards_multipart_resume(monkeypatch, tmp_path):
     import app.main as deployed_main
     from app.config import settings
