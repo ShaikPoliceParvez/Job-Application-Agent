@@ -59,6 +59,16 @@ def test_health_endpoint():
     assert "resume_name" in response.json()
 
 
+def test_production_site_origin_receives_cors_header():
+    response = client.get(
+        "/gmail/status",
+        headers={"Origin": "https://job-application-agent.appwrite.network"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://job-application-agent.appwrite.network"
+
+
 def test_analyze_rejects_unsupported_file_type():
     response = client.post(
         "/analyze",

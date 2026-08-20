@@ -65,13 +65,19 @@ def _is_production() -> bool:
         os.getenv("APPWRITE_FUNCTION_ID") or os.getenv("APPWRITE_FUNCTION_NAME")
     )
 
+configured_origins = {
+    origin.strip().rstrip("/")
+    for origin in settings.cors_allowed_origins.split(",")
+    if origin.strip()
+}
+configured_origins.update({
+    "http://localhost:8000",
+    "https://job-application-agent.appwrite.network",
+})
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        origin.strip().rstrip("/")
-        for origin in settings.cors_allowed_origins.split(",")
-        if origin.strip()
-    ],
+    allow_origins=sorted(configured_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
