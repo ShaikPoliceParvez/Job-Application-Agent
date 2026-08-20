@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import json
+import os
 import time
 import uuid
 from pathlib import Path
@@ -58,6 +59,12 @@ app = FastAPI(
 
 FRONTEND_DIRECTORY = Path(__file__).resolve().parent.parent.parent / "frontend"
 
+
+def _is_production() -> bool:
+    return settings.app_env == "production" or bool(
+        os.getenv("APPWRITE_FUNCTION_ID") or os.getenv("APPWRITE_FUNCTION_NAME")
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.cors_allowed_origins.split(",") if origin.strip()],
@@ -65,7 +72,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-if settings.app_env != "production" and FRONTEND_DIRECTORY.is_dir():
+if not _is_production() and FRONTEND_DIRECTORY.is_dir():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
 
 
@@ -205,7 +212,7 @@ async def upload_resume(file: UploadFile = File(...), file_id: str = Form("")) -
 
 @app.get("/", response_model=None)
 def frontend() -> FileResponse | dict:
-    if settings.app_env == "production":
+    if _is_production():
         return {"status": "ok", "service": "job-application-agent"}
     return FileResponse(
         FRONTEND_DIRECTORY / "index.html",
