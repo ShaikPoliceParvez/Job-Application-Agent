@@ -268,14 +268,16 @@ Use the repository root as the function source directory. Configure:
 
 | Appwrite setting | Value |
 |---|---|
-| Runtime | Python 3.11 or Python 3.12 |
+| Runtime | Python 3.11 or Python 3.12 recommended; Python 3.14 deploys non-OCR routes |
 | Entrypoint | `main.py` |
 | Dependencies | `requirements.txt` |
 | HTTP method | Any |
 
-Do not use Python 3.14: the pinned `paddlepaddle==2.6.2` and OCR packages do
-not provide compatible Python 3.14 wheels, which causes Appwrite to attempt a
-source build and fail during `setuptools.build_meta` loading.
+The pinned `paddlepaddle==2.6.2` and OCR packages do not provide compatible
+Python 3.14 wheels. The requirements file skips those optional OCR packages on
+Python 3.14, so the function can still deploy and serve health, Ollama,
+resume, draft, and Gmail routes. The `/analyze` screenshot route requires
+Python 3.11 or 3.12, where PaddleOCR is installed.
 
 Add the variables from `.env.example` in the Appwrite Function environment,
 including `OLLAMA_API_KEY`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, and

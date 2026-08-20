@@ -14,15 +14,15 @@ pydantic==2.9.2
 pydantic-settings==2.5.2
 
 # Image handling / preprocessing
-pillow==10.4.0
-opencv-python-headless==4.10.0.84
-numpy==1.26.4
+pillow==10.4.0; python_version < '3.14'
+opencv-python-headless==4.10.0.84; python_version < '3.14'
+numpy==1.26.4; python_version < '3.14'
 
 # OCR
 setuptools>=68  # required by paddle at import time, not auto-pulled on py3.12
-paddlepaddle==2.6.2
-paddleocr==2.9.1
-protobuf==3.20.3  # PaddlePaddle 2.6.2 compatibility
+paddlepaddle==2.6.2; python_version < '3.14'
+paddleocr==2.9.1; python_version < '3.14'
+protobuf==3.20.3; python_version < '3.14'  # PaddlePaddle 2.6.2 compatibility
 
 # Development and test tooling
 pytest>=8.0

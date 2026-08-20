@@ -30,7 +30,6 @@ from backend.app.config import settings
 from backend.app.logging_config import configure_logging
 from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
 from backend.app.ocr.confidence import is_low_confidence
-from backend.app.ocr.preprocessing import preprocess_image
 from backend.app.ocr.storage import retain_recent_screenshots
 from backend.app.schemas.job import JobExtractionRequest, JobExtractionResponse
 from backend.app.schemas.ocr import AnalyzeResponse
@@ -246,6 +245,8 @@ async def draft(
                 save_path.write_bytes(raw)
                 retain_recent_screenshots(settings.screenshot_directory, settings.screenshot_retention_count)
                 yield _sse("status", {"message": "Reading the screenshot with PP-OCRv4..."})
+                from backend.app.ocr.preprocessing import preprocess_image
+
                 posting = get_ocr_model().extract_text(preprocess_image(str(save_path)))["text"]
             if not posting:
                 raise ValueError("No readable job text was found.")
@@ -340,6 +341,8 @@ async def analyze(file: UploadFile = File(...)) -> AnalyzeResponse:
 
     try:
         start = time.time()
+
+        from backend.app.ocr.preprocessing import preprocess_image
 
         preprocessed = preprocess_image(str(save_path))
 
