@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import httpx
+from fastapi.testclient import TestClient
 
 # Appwrite may invoke this file with a working directory other than the
 # configured function root. Resolve the sibling `app` package from the
@@ -34,11 +34,13 @@ def _body(request: Any) -> bytes:
 def _query(request: Any) -> str:
 	value = getattr(request, "queryString", "") or ""
 	if isinstance(value, dict):
-		return str(httpx.QueryParams(value))
+		from urllib.parse import urlencode
+
+		return urlencode(value, doseq=True)
 	return str(value)
 
 
-async def _dispatch(request: Any) -> httpx.Response:
+def _dispatch(request: Any):
 	method = str(getattr(request, "method", "GET")).upper()
 	path = str(getattr(request, "path", "/") or "/")
 	query = _query(request)
@@ -47,15 +49,14 @@ async def _dispatch(request: Any) -> httpx.Response:
 	headers = dict(getattr(request, "headers", {}) or {})
 	headers.pop("host", None)
 	headers.pop("content-length", None)
-	transport = httpx.ASGITransport(app=app)
-	async with httpx.AsyncClient(transport=transport, base_url="http://appwrite.local") as client:
-		return await client.request(method, path, content=_body(request), headers=headers)
+	with TestClient(app) as client:
+		return client.request(method, path, content=_body(request), headers=headers)
 
 
-async def main(context: Any) -> Any:
+def main(context: Any) -> Any:
 	"""Appwrite's direct Python Function handler."""
 	try:
-		response = await _dispatch(context.req)
+		response = _dispatch(context.req)
 	except Exception as exc:  # noqa: BLE001 - keep client errors generic
 		context.error(f"Backend request failed: {exc}")
 		return context.res.json({"success": False, "error": "Backend request failed."}, 500)
