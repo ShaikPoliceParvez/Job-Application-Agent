@@ -29,7 +29,10 @@ def resume_attachment_name(candidate_name: str, source_name: str) -> str:
 
 def _client_config() -> dict[str, Any]:
     if not settings.google_client_id or not settings.google_client_secret:
-        raise RuntimeError("Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first")
+        raise RuntimeError(
+            "Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the runtime environment "
+            "(Appwrite Function environment variables in production, or .env locally)."
+        )
     return {
         "web": {
             "client_id": settings.google_client_id,
