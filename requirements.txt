@@ -2,6 +2,8 @@
 # PHASE 1 requirements (Screenshot -> Preprocessing -> PaddleOCR -> API)
 # Later phases (LangGraph, Qwen/Ollama, Gemma, Gmail API, SQLite) will
 # add more packages incrementally in their own phase — see README.
+# Appwrite deployment must use Python 3.11 or 3.12. PaddlePaddle 2.6.2
+# does not provide compatible wheels for Python 3.14.
 # ============================================================
 
 fastapi==0.115.0

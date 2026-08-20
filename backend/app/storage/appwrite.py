@@ -8,12 +8,19 @@ from backend.app.config import settings
 
 
 def configured() -> bool:
-    return bool(
+    credentials_present = bool(
         settings.appwrite_endpoint
         and settings.appwrite_project_id
         and settings.appwrite_api_key
         and settings.appwrite_bucket_id
     )
+    if not credentials_present:
+        return False
+    try:
+        import appwrite  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 def _storage() -> Any:

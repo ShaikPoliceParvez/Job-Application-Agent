@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     ocr_confidence_threshold: float = 0.80
     ocr_lang: str = "en"
     ocr_max_side: int = 1024
-    ocr_warmup_on_startup: bool = True
+    ocr_warmup_on_startup: bool = False
     screenshot_retention_count: int = 5
 
     # ---- LLMs (used from PHASE 2 onward through the Ollama adapter) -----

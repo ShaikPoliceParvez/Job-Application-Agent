@@ -262,7 +262,29 @@ Key Phase 1 variables:
 
 Never commit your real `.env` — it's already in `.gitignore`.
 
-## 10. Running locally
+## 10. Appwrite deployment
+
+Use the repository root as the function source directory. Configure:
+
+| Appwrite setting | Value |
+|---|---|
+| Runtime | Python 3.11 or Python 3.12 |
+| Entrypoint | `main.py` |
+| Dependencies | `requirements.txt` |
+| HTTP method | Any |
+
+Do not use Python 3.14: the pinned `paddlepaddle==2.6.2` and OCR packages do
+not provide compatible Python 3.14 wheels, which causes Appwrite to attempt a
+source build and fail during `setuptools.build_meta` loading.
+
+Add the variables from `.env.example` in the Appwrite Function environment,
+including `OLLAMA_API_KEY`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, and
+`APPWRITE_BUCKET_ID`. Set `OCR_WARMUP_ON_STARTUP=false` for serverless startup;
+PaddleOCR will load on the first `/analyze` request.
+
+After deployment, test `GET /health` before testing OCR or email generation.
+
+## 11. Running locally
 
 ```bash
 source venv/bin/activate
@@ -294,7 +316,7 @@ Expected response shape:
 }
 ```
 
-## 11. Mock mode (email sending)
+## 12. Mock mode (email sending)
 
 The first local-model endpoint is available at `POST /extract-job`. It accepts
 the OCR text and the regex-derived `candidate_emails` from `/analyze`, calls
@@ -307,7 +329,7 @@ OCR-derived candidates, so the local model cannot invent a destination.
   saves `logs/mock_email_preview.eml` without contacting Gmail.
 - `gmail`: sends the approved MIME message through the authenticated Gmail API.
 
-## 12. Real Gmail mode
+## 13. Real Gmail mode
 
 Will require a Google Cloud Console OAuth 2.0 Client ID/Secret with the
 minimum Gmail send scope, set via `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
@@ -315,7 +337,7 @@ and `GOOGLE_REDIRECT_URI` in `.env`. Click **Connect Gmail**, complete OAuth,
 review the generated draft, and click **Approve & Send**. The backend controls
 the recipient, sender, MIME structure, and candidate resume attachment.
 
-## 13. Security
+## 14. Security
 
 - Screenshot content is treated as **untrusted data**, never as
   instructions — a message embedded in a screenshot (e.g. "ignore
@@ -330,7 +352,7 @@ the recipient, sender, MIME structure, and candidate resume attachment.
 - OAuth tokens, passwords, and full resume contents are never written to
   logs.
 
-## 14. Prompt injection protection
+## 15. Prompt injection protection
 
 Planned for Phase 9+ (`backend/app/security/prompt_guard.py`): extracted OCR text
 is classified as `JOB_INFORMATION`, `APPLICATION_INSTRUCTION`, or
