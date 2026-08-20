@@ -166,6 +166,13 @@ source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements-local.txt
 ```
 
+For Appwrite, configure the Function build/install command explicitly because
+the production file has a separate name:
+
+```bash
+pip install -r requirements-appwrite.txt
+```
+
 > `paddlepaddle`/`paddleocr` require `setuptools` at import time on newer
 > Python versions — it's already listed in `requirements.txt`, but if you
 > see `ModuleNotFoundError: No module named 'setuptools'`, run
@@ -270,19 +277,22 @@ Use the repository root as the function source directory. Configure:
 |---|---|
 | Runtime | Python 3.11 or Python 3.12 recommended; Python 3.14 deploys non-OCR routes |
 | Entrypoint | `main.py` |
-| Dependencies | `requirements.txt` |
+| Dependencies | `requirements-appwrite.txt` via the custom install command above |
 | HTTP method | Any |
 
 The pinned `paddlepaddle==2.6.2` and OCR packages are intentionally excluded
 from the deployment requirements because they do not provide compatible
-Python 3.14 wheels. The function deploys health, Ollama, resume, draft, and
-Gmail routes. The `/analyze` screenshot route requires local Python 3.11 or
-3.12 with `requirements-local.txt`, where PaddleOCR is installed.
+Python 3.14 wheels. The function uses the external OCR API for `/analyze` and
+screenshot-based `/draft`; local Python 3.11 or 3.12 with
+`requirements-local.txt` retains PaddleOCR as a development fallback.
 
 Add the variables from `.env.example` in the Appwrite Function environment,
 including `OLLAMA_API_KEY`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, and
-`APPWRITE_BUCKET_ID`. Set `OCR_WARMUP_ON_STARTUP=false` for serverless startup;
-PaddleOCR will load on the first `/analyze` request.
+`APPWRITE_BUCKET_ID`. Also configure `OCR_API_URL` and, if required by the
+provider, `OCR_API_KEY`. The production function sends the uploaded image to
+that external OCR endpoint as a multipart field named `file`; the endpoint
+should return JSON containing `text`, and may return `confidence` and `blocks`.
+Set `OCR_WARMUP_ON_STARTUP=false`; no local OCR engine is loaded in Appwrite.
 
 After deployment, test `GET /health` before testing OCR or email generation.
 

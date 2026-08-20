@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.config import settings
 from backend.app.logging_config import configure_logging
-from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
+from backend.app.models.ocr_api import extract_email_candidates, extract_text as extract_external_ocr
 from backend.app.ocr.confidence import is_low_confidence
 from backend.app.ocr.storage import retain_recent_screenshots
 from backend.app.schemas.job import JobExtractionRequest, JobExtractionResponse
@@ -70,11 +70,21 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
 
 @app.on_event("startup")
 def warm_models() -> None:
-    if settings.ocr_warmup_on_startup:
-        get_ocr_model().warmup()
+    # Production OCR is an external API; local PaddleOCR remains available
+    # through the local requirements and is not loaded by this app startup.
+    return None
 
 ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
+
+
+def _extract_ocr(image_path: str, image_bytes: bytes, filename: str, content_type: str) -> dict:
+    if settings.ocr_api_url:
+        return extract_external_ocr(image_bytes, filename, content_type)
+    from backend.app.models.paddle_ocr import get_ocr_model
+    from backend.app.ocr.preprocessing import preprocess_image
+
+    return get_ocr_model().extract_text(preprocess_image(image_path))
 
 
 @app.get("/health")
@@ -245,9 +255,7 @@ async def draft(
                 save_path.write_bytes(raw)
                 retain_recent_screenshots(settings.screenshot_directory, settings.screenshot_retention_count)
                 yield _sse("status", {"message": "Reading the screenshot with PP-OCRv4..."})
-                from backend.app.ocr.preprocessing import preprocess_image
-
-                posting = get_ocr_model().extract_text(preprocess_image(str(save_path)))["text"]
+                posting = _extract_ocr(str(save_path), raw, filename, content_type)["text"]
             if not posting:
                 raise ValueError("No readable job text was found.")
             yield _sse("extracted_text", {"text": posting})
@@ -342,14 +350,9 @@ async def analyze(file: UploadFile = File(...)) -> AnalyzeResponse:
     try:
         start = time.time()
 
-        from backend.app.ocr.preprocessing import preprocess_image
-
-        preprocessed = preprocess_image(str(save_path))
-
-        # PaddleOCR's predict() accepts a numpy array directly, so we hand
-        # off the in-memory preprocessed image rather than re-reading disk.
-        ocr_model = get_ocr_model()
-        ocr_result = ocr_model.extract_text(preprocessed)
+        ocr_result = _extract_ocr(
+            str(save_path), raw, file.filename or "screenshot", file.content_type or "image/png"
+        )
 
         confidence = ocr_result["confidence"]
         low_conf = is_low_confidence(confidence, settings.ocr_confidence_threshold)

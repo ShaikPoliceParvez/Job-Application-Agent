@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     ocr_max_side: int = 1024
     ocr_warmup_on_startup: bool = False
     screenshot_retention_count: int = 5
+    ocr_api_url: str = ""
+    ocr_api_key: str = ""
+    ocr_api_timeout_seconds: float = 60.0
 
     # ---- LLMs (used from PHASE 2 onward through the Ollama adapter) -----
     llm_mode: Literal["cloud", "local"] = Field(default="cloud", validation_alias=AliasChoices("LLM_MODE"))
