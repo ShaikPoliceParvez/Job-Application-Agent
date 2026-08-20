@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from backend.main import _body, main
+from backend.main import _body, _dispatch, main
 
 
 class MockResponse:
@@ -42,3 +42,36 @@ def test_appwrite_entrypoint_preserves_binary_request_body():
     request = SimpleNamespace(bodyBinary="%PDF\x89\x00binary")
 
     assert _body(request) == b"%PDF\x89\x00binary"
+
+
+def test_appwrite_entrypoint_forwards_multipart_resume(monkeypatch, tmp_path):
+    import app.main as deployed_main
+    from app.config import settings
+
+    boundary = "----appwrite-test-boundary"
+    resume_bytes = b"%PDF\x89\x00binary"
+    body = (
+        f"--{boundary}\r\n"
+        'Content-Disposition: form-data; name="file"; filename="resume.pdf"\r\n'
+        "Content-Type: application/pdf\r\n\r\n"
+    ).encode("ascii") + resume_bytes + f"\r\n--{boundary}--\r\n".encode("ascii")
+    monkeypatch.setattr(deployed_main, "appwrite_storage_configured", lambda: False)
+    monkeypatch.setattr(settings, "resume_directory", tmp_path)
+
+    response = _dispatch(
+        SimpleNamespace(
+            method="POST",
+            path="/resume",
+            queryString="",
+            headers={
+                "content-type": f"multipart/form-data; boundary={boundary}",
+                "host": "function.example",
+                "content-length": str(len(body)),
+            },
+            bodyBinary=body,
+        )
+    )
+
+    assert response.status_code == 200
+    assert response.json()["size_bytes"] == len(resume_bytes)
+    assert (tmp_path / "default_resume.pdf").read_bytes() == resume_bytes
