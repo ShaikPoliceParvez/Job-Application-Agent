@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     ocr_api_url: str = ""
     ocr_api_key: str = ""
     ocr_api_timeout_seconds: float = 60.0
-    cors_allowed_origins: str = "http://localhost:8000"
+    cors_allowed_origins: str = "http://localhost:8000,https://job-application-agent.appwrite.network"
     ocr_mode: Literal["local", "api"] = "local"
 
     # ---- LLMs (used from PHASE 2 onward through the Ollama adapter) -----
