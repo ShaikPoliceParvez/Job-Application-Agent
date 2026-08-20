@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from backend.main import main
+from backend.main import _body, main
 
 
 class MockResponse:
@@ -36,3 +36,9 @@ def test_appwrite_entrypoint_returns_fastapi_response():
     assert result["body"]["status"] == "ok"
     assert result["body"]["service"] == "job-application-agent"
     assert context.errors == []
+
+
+def test_appwrite_entrypoint_preserves_binary_request_body():
+    request = SimpleNamespace(bodyBinary="%PDF\x89\x00binary")
+
+    assert _body(request) == b"%PDF\x89\x00binary"

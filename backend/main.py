@@ -20,12 +20,28 @@ from app.main import app
 
 
 def _body(request: Any) -> bytes:
-	binary = getattr(request, "bodyBinary", None)
+	# Appwrite's text body accessor can try to decode multipart/PDF bytes.
+	# Prefer the binary accessor, but tolerate runtimes where reading it fails.
+	try:
+		binary = getattr(request, "bodyBinary", None)
+	except (UnicodeDecodeError, TypeError, ValueError):
+		binary = None
 	if binary:
-		return binary if isinstance(binary, bytes) else bytes(binary)
-	value = getattr(request, "body", b"")
+		if isinstance(binary, bytes):
+			return binary
+		if isinstance(binary, bytearray):
+			return bytes(binary)
+		if isinstance(binary, str):
+			return binary.encode("latin-1")
+		return bytes(binary)
+	try:
+		value = getattr(request, "body", b"")
+	except (UnicodeDecodeError, TypeError, ValueError):
+		value = b""
 	if isinstance(value, bytes):
 		return value
+	if isinstance(value, bytearray):
+		return bytes(value)
 	if isinstance(value, (dict, list)):
 		return json.dumps(value).encode("utf-8")
 	return str(value or "").encode("utf-8")
