@@ -163,7 +163,7 @@ Requires Python 3.10+ (project developed/tested on 3.12; 3.11 also fine).
 cd job_application_agent
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 ```
 
 > `paddlepaddle`/`paddleocr` require `setuptools` at import time on newer
@@ -273,11 +273,11 @@ Use the repository root as the function source directory. Configure:
 | Dependencies | `requirements.txt` |
 | HTTP method | Any |
 
-The pinned `paddlepaddle==2.6.2` and OCR packages do not provide compatible
-Python 3.14 wheels. The requirements file skips those optional OCR packages on
-Python 3.14, so the function can still deploy and serve health, Ollama,
-resume, draft, and Gmail routes. The `/analyze` screenshot route requires
-Python 3.11 or 3.12, where PaddleOCR is installed.
+The pinned `paddlepaddle==2.6.2` and OCR packages are intentionally excluded
+from the deployment requirements because they do not provide compatible
+Python 3.14 wheels. The function deploys health, Ollama, resume, draft, and
+Gmail routes. The `/analyze` screenshot route requires local Python 3.11 or
+3.12 with `requirements-local.txt`, where PaddleOCR is installed.
 
 Add the variables from `.env.example` in the Appwrite Function environment,
 including `OLLAMA_API_KEY`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, and
