@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import sys
 from pathlib import Path
@@ -53,10 +52,10 @@ async def _dispatch(request: Any) -> httpx.Response:
 		return await client.request(method, path, content=_body(request), headers=headers)
 
 
-def main(context: Any) -> Any:
+async def main(context: Any) -> Any:
 	"""Appwrite's direct Python Function handler."""
 	try:
-		response = asyncio.run(_dispatch(context.req))
+		response = await _dispatch(context.req)
 	except Exception as exc:  # noqa: BLE001 - keep client errors generic
 		context.error(f"Backend request failed: {exc}")
 		return context.res.json({"success": False, "error": "Backend request failed."}, 500)
