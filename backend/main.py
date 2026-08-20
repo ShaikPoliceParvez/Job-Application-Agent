@@ -4,9 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
+from pathlib import Path
 from typing import Any
 
 import httpx
+
+# Appwrite may invoke this file with a working directory other than the
+# configured function root. Resolve the sibling `app` package from the
+# entrypoint location instead of relying on the process working directory.
+BACKEND_DIRECTORY = Path(__file__).resolve().parent
+if str(BACKEND_DIRECTORY) not in sys.path:
+	sys.path.insert(0, str(BACKEND_DIRECTORY))
 
 from app.main import app
 
