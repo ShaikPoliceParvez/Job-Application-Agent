@@ -87,6 +87,16 @@ if not _is_production() and FRONTEND_DIRECTORY.is_dir():
     app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
 
 
+@app.get("/styles.css", include_in_schema=False)
+def frontend_styles() -> FileResponse:
+    return FileResponse(FRONTEND_DIRECTORY / "styles.css", media_type="text/css")
+
+
+@app.get("/app.js", include_in_schema=False)
+def frontend_script() -> FileResponse:
+    return FileResponse(FRONTEND_DIRECTORY / "app.js", media_type="application/javascript")
+
+
 @app.on_event("startup")
 def warm_models() -> None:
     # Production OCR is an external API; local PaddleOCR remains available
