@@ -14,8 +14,7 @@ from langgraph.graph import END, START, StateGraph
 from backend.app.agents.draft import generate_email
 from backend.app.agents.job_extraction import extract_job
 from backend.app.config import settings
-from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
-from backend.app.ocr.preprocessing import preprocess_image
+from backend.app.services.ocr import extract_email_candidates, extract_text as extract_ocr_text
 from backend.app.profile.loader import load_candidate_context
 from backend.app.schemas.job import JobPosting
 
@@ -48,8 +47,11 @@ def _ocr_node(state: ApplicationState) -> dict[str, Any]:
     if state.get("source_text", "").strip():
         text = state["source_text"].strip()
     elif state.get("screenshot_path"):
-        image = preprocess_image(state["screenshot_path"])
-        text = get_ocr_model().extract_text(image)["text"]
+        path = state["screenshot_path"]
+        suffix = path.rsplit(".", 1)[-1].lower() if "." in path else "png"
+        content_type = "application/pdf" if suffix == "pdf" else f"image/{'jpeg' if suffix in {'jpg', 'jpeg'} else suffix}"
+        with open(path, "rb") as file:
+            text = extract_ocr_text(file.read(), path, content_type)["text"]
     else:
         raise ValueError("Provide source_text or screenshot_path")
     return {"source_text": text, "candidate_emails": extract_email_candidates(text)}

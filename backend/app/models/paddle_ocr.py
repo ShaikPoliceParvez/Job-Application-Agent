@@ -1,5 +1,5 @@
 """
-PaddleOCR model wrapper (PP-OCRv4 with paddleocr==2.9.1).
+PaddleOCR model wrapper (PP-OCRv5 Mobile with paddleocr==3.0.3).
 
 Responsibility per spec section 4: TEXT EXTRACTION ONLY.
 No "understanding" happens here — that's Qwen3's job (Phase 2+).
@@ -33,7 +33,7 @@ EMAIL_REGEX = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 class PaddleOCRModel(OCRModel):
     """Thin, lazy wrapper around paddleocr.PaddleOCR."""
 
-    def __init__(self, lang: str | None = None, ocr_version: str = "PP-OCRv4"):
+    def __init__(self, lang: str | None = None, ocr_version: str = "PP-OCRv5"):
         self._lang = lang or settings.ocr_lang
         self._ocr_version = ocr_version
         self._engine = None  # lazy
@@ -53,24 +53,16 @@ class PaddleOCRModel(OCRModel):
         # triggers the heavy paddle import / model load as a side effect.
         from paddleocr import PaddleOCR
 
-        try:
-            self._engine = PaddleOCR(
-                lang=self._lang,
-                ocr_version=self._ocr_version,
-                use_doc_orientation_classify=False,
-                use_doc_unwarping=False,
-                use_textline_orientation=False,
-            )
-        except TypeError:
-            # Only retry-with-minimal-args on a genuine "unexpected keyword
-            # argument" from an older/newer paddleocr build. Anything else
-            # (e.g. a model-download/network error) is a real failure and
-            # must propagate as-is rather than be masked by a doomed retry.
-            logger.warning(
-                "PaddleOCR constructor kwargs not supported by installed "
-                "paddleocr build; retrying with minimal args.",
-            )
-            self._engine = PaddleOCR(lang=self._lang)
+        self._engine = PaddleOCR(
+            lang=self._lang,
+            ocr_version=self._ocr_version,
+            text_detection_model_name="PP-OCRv5_mobile_det",
+            text_recognition_model_name="PP-OCRv5_mobile_rec",
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+            device="cpu",
+        )
 
         logger.info("MODEL_LOADED PaddleOCR in %.2fs", time.time() - start)
         return self._engine
@@ -104,7 +96,7 @@ class PaddleOCRModel(OCRModel):
             result = engine.predict(image)
             pages = result
         else:
-            # paddleocr==2.9.1 returns [[box, (text, score)], ...] from ocr().
+            # Keep compatibility with the legacy OCR result shape used by older engines.
             result = engine.ocr(image, cls=True)
             pages = [{"legacy_lines": page or []} for page in (result or [])]
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from backend.app.config import settings
-from backend.app.models.ollama import get_job_model
+from backend.app.services.llm import get_job_model
 from backend.app.validation.email import validate_email
 
 
@@ -201,7 +201,7 @@ def generate_email(
         raw = get_job_model().generate(
             prompt + (f"\nFix these validation errors: {'; '.join(errors)}" if errors else ""),
             format="json",
-            options={"num_predict": settings.ollama_draft_num_predict},
+            options={"num_predict": settings.groq_max_tokens},
         )
         try:
             email = _parse_generated(raw)

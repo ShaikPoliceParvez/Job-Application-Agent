@@ -95,7 +95,7 @@ def test_refine_streams_revised_draft():
         )
 
     assert response.status_code == 200
-    assert "Applying your edit with Ollama" in response.text
+    assert "Applying your edit with Groq" in response.text
     assert "Subject: Revised" in response.text
     assert "event: complete" in response.text
 
