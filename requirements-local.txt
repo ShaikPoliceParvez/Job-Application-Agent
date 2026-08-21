@@ -1,7 +1,8 @@
-# Local development requirements.
+# Optional local test/runtime requirements. Production uses requirements.txt.
 -r requirements.txt
+uvicorn[standard]==0.30.6
 
-# PaddleOCR remains the local screenshot OCR implementation.
+# Legacy local OCR checks only; never install this set in Vercel.
 setuptools>=68
 pillow==10.4.0
 opencv-python-headless==4.10.0.84
@@ -11,5 +12,7 @@ paddleocr==3.0.3
 paddlex==3.0.3
 protobuf==3.20.3
 
-# Test tooling
 pytest>=8.0
+httpx>=0.27
+pypdf>=5.0
+langgraph>=0.2.0

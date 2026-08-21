@@ -22,11 +22,13 @@ def load_candidate_context() -> tuple[dict, str, str]:
     if settings.profile_path.exists():
         profile = json.loads(settings.profile_path.read_text(encoding="utf-8"))
 
-    resume_files = sorted(
-        path
-        for path in settings.resume_directory.iterdir()
-        if path.is_file() and path.suffix.lower() in {".txt", ".md", ".json", ".pdf"}
-    )
+    resume_files = []
+    if settings.resume_directory.exists():
+        resume_files = sorted(
+            path
+            for path in settings.resume_directory.iterdir()
+            if path.is_file() and path.suffix.lower() in {".txt", ".md", ".json", ".pdf"}
+        )
     if not resume_files:
         return profile, "", ""
 

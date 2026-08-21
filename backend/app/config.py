@@ -8,8 +8,6 @@ what the app will eventually read.
 """
 
 from pathlib import Path
-from typing import Literal
-
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,50 +26,41 @@ class Settings(BaseSettings):
     resume_directory: Path = Path("data/resumes")
     profile_path: Path = Path("data/profile/profile.json")
 
-    # ---- OCR (PHASE 1) -------------------------------------------------
-    # PaddleOCR 3.0.3 with the lightweight PP-OCRv5 Mobile models.
+    # ---- Hosted OCR -----------------------------------------------------
     model_ocr: str = "PP-OCRv5"
     ocr_confidence_threshold: float = 0.80
-    ocr_lang: str = "en"
-    ocr_max_side: int = 1024
-    ocr_warmup_on_startup: bool = True
-    screenshot_retention_count: int = 5
+    paddleocr_api_url: str = Field(default="", validation_alias=AliasChoices("PADDLEOCR_API_URL"))
+    paddleocr_access_token: str | None = Field(default=None, validation_alias=AliasChoices("PADDLEOCR_ACCESS_TOKEN"))
+    paddleocr_timeout_seconds: float = 120.0
 
-    # ---- LLMs (used from PHASE 2 onward through the Ollama adapter) -----
-    llm_mode: Literal["cloud", "local"] = Field(default="cloud", validation_alias=AliasChoices("LLM_MODE"))
-    ollama_base_url: str = Field(
-        default="https://ollama.com",
-        validation_alias=AliasChoices("OLLAMA_BASE_URL", "OLLAMA_HOST"),
-    )
-    ollama_api_key: str | None = Field(default=None, validation_alias=AliasChoices("OLLAMA_API_KEY"))
-    ollama_model: str = Field(
-        default="gemma2:2b-instruct-q2_K",
-        validation_alias=AliasChoices("OLLAMA_MODEL", "MODEL_EMAIL"),
-    )
-    model_vision: str = "gemma3:4b"
-    ollama_timeout_seconds: float = 120.0
-    ollama_max_retries: int = 2
-    ollama_keep_alive: str | int = -1
-    ollama_num_ctx: int = 4096
-    ollama_num_predict: int = 170
-    ollama_draft_num_predict: int = 300
-    ollama_temperature: float = 0.2
+    # ---- Groq LLM -------------------------------------------------------
+    groq_api_key: str | None = Field(default=None, validation_alias=AliasChoices("GROQ_API_KEY"))
+    groq_model: str = Field(default="llama-3.1-8b-instant", validation_alias=AliasChoices("GROQ_MODEL"))
+    groq_timeout_seconds: float = 120.0
+    groq_max_tokens: int = 500
+    groq_temperature: float = 0.2
     email_word_limit: int = 120
     email_max_regeneration_attempts: int = 3
+    cors_allowed_origins: str = ""
 
     # ---- Email sending (PHASE 6+) --------------------------------------
     email_send_mode: str = "gmail"  # "mock" | "gmail"
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/gmail/callback"
-    google_token_path: Path = Path("data/gmail_token.json")
+
+    # ---- Upstash Redis server-side Gmail persistence -------------------
+    upstash_redis_rest_url: str = ""
+    upstash_redis_rest_token: str = ""
 
     # ---- Database (PHASE 9+) -------------------------------------------
     database_url: str = "sqlite:///applications.db"
 
     # ---- Uploads ---------------------------------------------------------
-    max_upload_size_mb: int = 10
-    allowed_image_types: tuple[str, ...] = ("image/png", "image/jpeg", "image/webp")
+    max_upload_size_mb: int = 3
+    allowed_upload_types: tuple[str, ...] = (
+        "application/pdf", "image/png", "image/jpeg", "image/jpg", "image/webp"
+    )
 
     # ---- Logging -----------------------------------------------------
     log_dir: Path = Path("logs")
@@ -82,13 +71,7 @@ settings = Settings()
 # Resolve configured relative paths once so the app behaves the same no
 # matter which directory was used to launch Uvicorn.
 settings.base_dir = settings.base_dir.resolve()
-for path_name in ("screenshot_directory", "resume_directory", "profile_path", "log_dir", "google_token_path"):
+for path_name in ("screenshot_directory", "resume_directory", "profile_path", "log_dir"):
     configured_path = getattr(settings, path_name)
     if not configured_path.is_absolute():
         setattr(settings, path_name, settings.base_dir / configured_path)
-
-# Ensure directories referenced by Phase 1 exist at import time.
-settings.screenshot_directory.mkdir(parents=True, exist_ok=True)
-settings.resume_directory.mkdir(parents=True, exist_ok=True)
-settings.profile_path.parent.mkdir(parents=True, exist_ok=True)
-settings.log_dir.mkdir(parents=True, exist_ok=True)

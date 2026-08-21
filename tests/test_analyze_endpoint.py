@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -59,10 +59,21 @@ def test_health_endpoint():
     assert "resume_name" in response.json()
 
 
+def test_analyze_accepts_pdf_with_hosted_ocr():
+    with patch("backend.app.main.extract_ocr_text") as extract:
+        extract.return_value = {"text": "A job posting", "confidence": 0.95, "blocks": []}
+        response = client.post(
+            "/analyze",
+            files={"file": ("job.pdf", b"%PDF-1.4 fake", "application/pdf")},
+        )
+    assert response.status_code == 200
+    assert response.json()["success"] is True
+
+
 def test_analyze_rejects_unsupported_file_type():
     response = client.post(
         "/analyze",
-        files={"file": ("resume.pdf", b"%PDF-1.4 fake", "application/pdf")},
+        files={"file": ("resume.txt", b"plain text", "text/plain")},
     )
     assert response.status_code == 400
 
@@ -75,11 +86,17 @@ def test_analyze_rejects_empty_file():
     assert response.status_code == 400
 
 
-@patch("backend.app.models.paddle_ocr.PaddleOCRModel._load")
-def test_analyze_success_with_mocked_ocr(mock_load):
-    mock_engine = MagicMock()
-    mock_engine.predict.return_value = _fake_predict_result()
-    mock_load.return_value = mock_engine
+@patch("backend.app.main.extract_ocr_text")
+def test_analyze_success_with_mocked_ocr(extract):
+    result = _fake_predict_result()[0]
+    extract.return_value = {
+        "text": "\n".join(result["rec_texts"]),
+        "confidence": 0.97,
+        "blocks": [
+            {"text": text, "confidence": score, "bbox": bbox}
+            for text, score, bbox in zip(result["rec_texts"], result["rec_scores"], result["rec_polys"])
+        ],
+    }
 
     with open(FIXTURE, "rb") as f:
         response = client.post(
@@ -97,20 +114,16 @@ def test_analyze_success_with_mocked_ocr(mock_load):
     assert len(data["blocks"]) == 3
     assert data["candidate_emails"] == ["hr@abctechnologies.com"]
     assert data["low_confidence"] is False
-    assert data["screenshot_path"] is not None
+    assert data["screenshot_path"] is None
 
 
-@patch("backend.app.models.paddle_ocr.PaddleOCRModel._load")
-def test_analyze_flags_low_confidence(mock_load):
-    mock_engine = MagicMock()
-    mock_engine.predict.return_value = [
-        {
-            "rec_texts": ["blurry text"],
-            "rec_scores": [0.3],
-            "rec_polys": [[[0, 0], [50, 0], [50, 10], [0, 10]]],
-        }
-    ]
-    mock_load.return_value = mock_engine
+@patch("backend.app.main.extract_ocr_text")
+def test_analyze_flags_low_confidence(extract):
+    extract.return_value = {
+        "text": "blurry text",
+        "confidence": 0.3,
+        "blocks": [{"text": "blurry text", "confidence": 0.3, "bbox": []}],
+    }
 
     with open(FIXTURE, "rb") as f:
         response = client.post(
@@ -123,9 +136,9 @@ def test_analyze_flags_low_confidence(mock_load):
     assert data["low_confidence"] is True
 
 
-@patch("backend.app.models.paddle_ocr.PaddleOCRModel._load")
-def test_analyze_handles_ocr_engine_failure_gracefully(mock_load):
-    mock_load.side_effect = RuntimeError("simulated model load failure")
+@patch("backend.app.main.extract_ocr_text")
+def test_analyze_handles_ocr_engine_failure_gracefully(extract):
+    extract.side_effect = RuntimeError("simulated hosted OCR failure")
 
     with open(FIXTURE, "rb") as f:
         response = client.post(
@@ -137,4 +150,4 @@ def test_analyze_handles_ocr_engine_failure_gracefully(mock_load):
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is False
-    assert "simulated model load failure" in data["error"]
+    assert "simulated hosted OCR failure" in data["error"]
