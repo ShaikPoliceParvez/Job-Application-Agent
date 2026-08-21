@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import httpx
+from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
@@ -33,7 +33,7 @@ def _query(request: Any) -> str:
     return str(value)
 
 
-async def _dispatch(request: Any) -> httpx.Response:
+def _dispatch(request: Any):
     method = str(getattr(request, "method", "GET")).upper()
     path = str(getattr(request, "path", "/") or "/")
     query = _query(request)
@@ -44,15 +44,14 @@ async def _dispatch(request: Any) -> httpx.Response:
     headers.pop("host", None)
     headers.pop("content-length", None)
 
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://appwrite.local") as client:
-        return await client.request(method, path, content=_body(request), headers=headers)
+    with TestClient(app) as client:
+        return client.request(method, path, content=_body(request), headers=headers)
 
 
-async def main(context: Any) -> Any:
+def main(context: Any) -> Any:
     """Appwrite's Python Function entrypoint."""
     try:
-        response = await _dispatch(context.req)
+        response = _dispatch(context.req)
     except Exception as exc:  # noqa: BLE001 - keep client errors generic
         context.error(f"Backend request failed: {exc}")
         return context.res.json({"success": False, "error": "Backend request failed."}, 500)
