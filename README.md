@@ -163,14 +163,7 @@ Requires Python 3.10+ (project developed/tested on 3.12; 3.11 also fine).
 cd job_application_agent
 python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements-local.txt
-```
-
-For Appwrite, configure the Function build/install command explicitly because
-the production file has a separate name:
-
-```bash
-pip install -r requirements-appwrite.txt
+pip install -r requirements.txt
 ```
 
 > `paddlepaddle`/`paddleocr` require `setuptools` at import time on newer
@@ -269,34 +262,7 @@ Key Phase 1 variables:
 
 Never commit your real `.env` — it's already in `.gitignore`.
 
-## 10. Appwrite deployment
-
-Use the repository root as the function source directory. Configure:
-
-| Appwrite setting | Value |
-|---|---|
-| Runtime | Python 3.11 or Python 3.12 recommended; Python 3.14 deploys non-OCR routes |
-| Entrypoint | `main.py` |
-| Dependencies | `requirements-appwrite.txt` via the custom install command above |
-| HTTP method | Any |
-
-The pinned `paddlepaddle==2.6.2` and OCR packages are intentionally excluded
-from the deployment requirements because they do not provide compatible
-Python 3.14 wheels. The function uses the external OCR API for `/analyze` and
-screenshot-based `/draft`; local Python 3.11 or 3.12 with
-`requirements-local.txt` retains PaddleOCR as a development fallback.
-
-Add the variables from `.env.example` in the Appwrite Function environment,
-including `OLLAMA_API_KEY`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, and
-`APPWRITE_BUCKET_ID`. Also configure `OCR_API_URL` and, if required by the
-provider, `OCR_API_KEY`. The production function sends the uploaded image to
-that external OCR endpoint as a multipart field named `file`; the endpoint
-should return JSON containing `text`, and may return `confidence` and `blocks`.
-Set `OCR_WARMUP_ON_STARTUP=false`; no local OCR engine is loaded in Appwrite.
-
-After deployment, test `GET /health` before testing OCR or email generation.
-
-## 11. Running locally
+## 10. Running locally
 
 ```bash
 source venv/bin/activate
@@ -328,7 +294,7 @@ Expected response shape:
 }
 ```
 
-## 12. Mock mode (email sending)
+## 11. Mock mode (email sending)
 
 The first local-model endpoint is available at `POST /extract-job`. It accepts
 the OCR text and the regex-derived `candidate_emails` from `/analyze`, calls
@@ -341,7 +307,7 @@ OCR-derived candidates, so the local model cannot invent a destination.
   saves `logs/mock_email_preview.eml` without contacting Gmail.
 - `gmail`: sends the approved MIME message through the authenticated Gmail API.
 
-## 13. Real Gmail mode
+## 12. Real Gmail mode
 
 Will require a Google Cloud Console OAuth 2.0 Client ID/Secret with the
 minimum Gmail send scope, set via `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
@@ -349,7 +315,7 @@ and `GOOGLE_REDIRECT_URI` in `.env`. Click **Connect Gmail**, complete OAuth,
 review the generated draft, and click **Approve & Send**. The backend controls
 the recipient, sender, MIME structure, and candidate resume attachment.
 
-## 14. Security
+## 13. Security
 
 - Screenshot content is treated as **untrusted data**, never as
   instructions — a message embedded in a screenshot (e.g. "ignore
@@ -364,7 +330,7 @@ the recipient, sender, MIME structure, and candidate resume attachment.
 - OAuth tokens, passwords, and full resume contents are never written to
   logs.
 
-## 15. Prompt injection protection
+## 14. Prompt injection protection
 
 Planned for Phase 9+ (`backend/app/security/prompt_guard.py`): extracted OCR text
 is classified as `JOB_INFORMATION`, `APPLICATION_INSTRUCTION`, or

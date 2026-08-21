@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import json
-import os
 import time
 import uuid
 from pathlib import Path
@@ -27,17 +26,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import settings
-from .logging_config import configure_logging
-from .models.ocr_api import extract_email_candidates, extract_text as extract_external_ocr
-from .ocr.confidence import is_low_confidence
-from .ocr.storage import retain_recent_screenshots
-from .schemas.job import JobExtractionRequest, JobExtractionResponse
-from .schemas.ocr import AnalyzeResponse
-from .agents.job_extraction import extract_job
-from .agents.draft import stream_draft, stream_refinement
-from .profile.loader import load_candidate_context
-from .gmail.service import (
+from backend.app.config import settings
+from backend.app.logging_config import configure_logging
+from backend.app.models.paddle_ocr import extract_email_candidates, get_ocr_model
+from backend.app.ocr.confidence import is_low_confidence
+from backend.app.ocr.preprocessing import preprocess_image
+from backend.app.ocr.storage import retain_recent_screenshots
+from backend.app.schemas.job import JobExtractionRequest, JobExtractionResponse
+from backend.app.schemas.ocr import AnalyzeResponse
+from backend.app.agents.job_extraction import extract_job
+from backend.app.agents.draft import stream_draft, stream_refinement
+from backend.app.profile.loader import load_candidate_context
+from backend.app.gmail.service import (
     authorization_url,
     finish_authorization,
     gmail_account,
@@ -45,8 +45,8 @@ from .gmail.service import (
     resume_attachment_name,
     send_email,
 )
-from .storage.appwrite import configured as appwrite_storage_configured
-from .storage.appwrite import upload_resume as upload_resume_to_appwrite
+from backend.app.storage.appwrite import configured as appwrite_storage_configured
+from backend.app.storage.appwrite import upload_resume as upload_resume_to_appwrite
 
 configure_logging()
 logger = logging.getLogger("main")
@@ -59,84 +59,32 @@ app = FastAPI(
 
 FRONTEND_DIRECTORY = Path(__file__).resolve().parent.parent.parent / "frontend"
 
-
-def _is_production() -> bool:
-    return settings.app_env == "production" or bool(
-        os.getenv("APPWRITE_FUNCTION_ID") or os.getenv("APPWRITE_FUNCTION_NAME")
-    )
-
-configured_origins = {
-    origin.strip().rstrip("/")
-    for origin in settings.cors_allowed_origins.split(",")
-    if origin.strip()
-}
-configured_origins.update({
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "https://job-application-agent.appwrite.network",
-})
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=sorted(configured_origins),
+    allow_origins=["*"],  # tighten before any non-local deployment
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-if not _is_production() and FRONTEND_DIRECTORY.is_dir():
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
-
-
-@app.get("/styles.css", include_in_schema=False)
-def frontend_styles() -> FileResponse:
-    return FileResponse(FRONTEND_DIRECTORY / "styles.css", media_type="text/css")
-
-
-@app.get("/app.js", include_in_schema=False)
-def frontend_script() -> FileResponse:
-    return FileResponse(FRONTEND_DIRECTORY / "app.js", media_type="application/javascript")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIRECTORY), name="static")
 
 
 @app.on_event("startup")
 def warm_models() -> None:
-    # Production OCR is an external API; local PaddleOCR remains available
-    # through the local requirements and is not loaded by this app startup.
-    return None
+    if settings.ocr_warmup_on_startup:
+        get_ocr_model().warmup()
 
 ALLOWED_CONTENT_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
 MAX_UPLOAD_BYTES = settings.max_upload_size_mb * 1024 * 1024
 
 
-def _extract_ocr(image_path: str, image_bytes: bytes, filename: str, content_type: str) -> dict:
-    if settings.ocr_mode == "api":
-        return extract_external_ocr(image_bytes, filename, content_type)
-    from .models.paddle_ocr import get_ocr_model
-    from .ocr.preprocessing import preprocess_image
-
-    return get_ocr_model().extract_text(preprocess_image(image_path))
-
-
 @app.get("/health")
 def health() -> dict:
-    # Health checks must not download remote resume storage or parse a PDF.
-    # Those dependencies can be unavailable while the API itself is healthy.
-    profile_loaded = settings.profile_path.exists()
-    if appwrite_storage_configured() and settings.appwrite_resume_file_id:
-        resume_name = settings.appwrite_resume_filename or "resume.pdf"
-    else:
-        resume_name = next(
-            (
-                path.name
-                for path in sorted(settings.resume_directory.iterdir())
-                if path.is_file() and path.suffix.lower() in {".txt", ".md", ".json", ".pdf"}
-            ),
-            "",
-        )
+    profile, _, resume_name = load_candidate_context()
     return {
         "status": "ok",
-        "service": "job-application-agent",
         "phase": 3,
-        "profile_loaded": profile_loaded,
+        "profile_loaded": bool(profile),
         "resume_name": resume_name,
         "llm_provider": "ollama_cloud" if settings.llm_mode == "cloud" else "ollama_local",
         "model": settings.ollama_model,
@@ -167,15 +115,14 @@ def gmail_start() -> RedirectResponse:
 
 @app.get("/auth/gmail/callback")
 def gmail_callback(code: str = "", state: str = "", error: str = "") -> RedirectResponse:
-    frontend_url = settings.frontend_url.rstrip("/") if _is_production() else ""
     if error:
-        return RedirectResponse(f"{frontend_url}/?gmail=error" if frontend_url else "/?gmail=error")
+        return RedirectResponse("/?gmail=error")
     try:
         finish_authorization(code, state)
     except Exception as exc:  # noqa: BLE001 - OAuth errors are shown after redirect
         logger.exception("GMAIL_AUTH_FAILED error=%s", exc)
-        return RedirectResponse(f"{frontend_url}/?gmail=error" if frontend_url else "/?gmail=error")
-    return RedirectResponse(f"{frontend_url}/?gmail=connected" if frontend_url else "/?gmail=connected")
+        return RedirectResponse("/?gmail=error")
+    return RedirectResponse("/?gmail=connected")
 
 
 @app.get("/gmail/status")
@@ -245,10 +192,8 @@ async def upload_resume(file: UploadFile = File(...), file_id: str = Form("")) -
     return {"configured": True, "name": safe_name, "size_bytes": len(raw)}
 
 
-@app.get("/", response_model=None)
-def frontend() -> FileResponse | dict:
-    if _is_production():
-        return {"status": "ok", "service": "job-application-agent"}
+@app.get("/")
+def frontend() -> FileResponse:
     return FileResponse(
         FRONTEND_DIRECTORY / "index.html",
         headers={"Cache-Control": "no-store, max-age=0"},
@@ -301,7 +246,7 @@ async def draft(
                 save_path.write_bytes(raw)
                 retain_recent_screenshots(settings.screenshot_directory, settings.screenshot_retention_count)
                 yield _sse("status", {"message": "Reading the screenshot with PP-OCRv4..."})
-                posting = _extract_ocr(str(save_path), raw, filename, content_type)["text"]
+                posting = get_ocr_model().extract_text(preprocess_image(str(save_path)))["text"]
             if not posting:
                 raise ValueError("No readable job text was found.")
             yield _sse("extracted_text", {"text": posting})
@@ -396,9 +341,12 @@ async def analyze(file: UploadFile = File(...)) -> AnalyzeResponse:
     try:
         start = time.time()
 
-        ocr_result = _extract_ocr(
-            str(save_path), raw, file.filename or "screenshot", file.content_type or "image/png"
-        )
+        preprocessed = preprocess_image(str(save_path))
+
+        # PaddleOCR's predict() accepts a numpy array directly, so we hand
+        # off the in-memory preprocessed image rather than re-reading disk.
+        ocr_model = get_ocr_model()
+        ocr_result = ocr_model.extract_text(preprocessed)
 
         confidence = ocr_result["confidence"]
         low_conf = is_low_confidence(confidence, settings.ocr_confidence_threshold)

@@ -22,8 +22,6 @@ class Settings(BaseSettings):
         protected_namespaces=("settings_",),
     )
 
-    app_env: Literal["local", "production"] = "local"
-
     # ---- Paths -------------------------------------------------------
     base_dir: Path = Path(__file__).resolve().parent.parent.parent
     screenshot_directory: Path = Path("data/screenshots")
@@ -36,13 +34,8 @@ class Settings(BaseSettings):
     ocr_confidence_threshold: float = 0.80
     ocr_lang: str = "en"
     ocr_max_side: int = 1024
-    ocr_warmup_on_startup: bool = False
+    ocr_warmup_on_startup: bool = True
     screenshot_retention_count: int = 5
-    ocr_api_url: str = ""
-    ocr_api_key: str = ""
-    ocr_api_timeout_seconds: float = 60.0
-    cors_allowed_origins: str = "http://localhost:8000,https://job-application-agent.appwrite.network"
-    ocr_mode: Literal["local", "api"] = "local"
 
     # ---- LLMs (used from PHASE 2 onward through the Ollama adapter) -----
     llm_mode: Literal["cloud", "local"] = Field(default="cloud", validation_alias=AliasChoices("LLM_MODE"))
@@ -72,7 +65,6 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/gmail/callback"
     google_token_path: Path = Path("data/gmail_token.json")
-    frontend_url: str = "https://job-application-agent.appwrite.network"
 
     # ---- Appwrite Storage ---------------------------------------------
     appwrite_endpoint: str = "https://cloud.appwrite.io/v1"

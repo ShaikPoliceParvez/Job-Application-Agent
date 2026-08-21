@@ -10,8 +10,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from ..config import settings
-from .base import LLMModel, VisionModel
+from backend.app.config import settings
+from backend.app.models.base import LLMModel, VisionModel
 
 logger = logging.getLogger("models.ollama")
 

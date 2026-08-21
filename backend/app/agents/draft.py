@@ -7,9 +7,9 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from ..config import settings
-from ..models.ollama import get_job_model
-from ..validation.email import validate_email
+from backend.app.config import settings
+from backend.app.models.ollama import get_job_model
+from backend.app.validation.email import validate_email
 
 
 @dataclass(frozen=True)

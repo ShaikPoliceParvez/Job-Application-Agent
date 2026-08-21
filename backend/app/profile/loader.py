@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..config import settings
-from ..storage.appwrite import configured as appwrite_configured
-from ..storage.appwrite import download_resume
+from backend.app.config import settings
+from backend.app.storage.appwrite import configured as appwrite_configured
+from backend.app.storage.appwrite import download_resume
 
 
 def _resume_text(content: bytes, filename: str) -> str:

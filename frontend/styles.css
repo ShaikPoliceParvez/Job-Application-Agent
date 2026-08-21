@@ -36,15 +36,3 @@ textarea { width:100%; resize:vertical; color:var(--ink); background:#fff; borde
 	.source-card,.resume-card,.instructions-card,.details-card,.draft-card { min-height:0; height:100%; }
 	.security-note { margin-top:14px; }
 }
-
-:root { --field:#fff; }
-:root[data-theme="dark"] { --ink:#e8f0eb; --muted:#a5b2ab; --line:#34433b; --page:#17201c; --card:#202b25; --field:#18231d; --soft:#243c2d; --blue:#203446; --shadow:0 2px 14px rgba(0,0,0,.22); }
-body { font-size:14px; transition:background .2s,color .2s; }
-.app-header { height:68px; background:var(--card); }
-.page-heading { padding:24px 0 18px; }
-.page-heading h1 { font-size:24px; }
-.page-heading p,.card-title p { font-size:13px; }
-.outline-button { padding:9px 13px; font-size:12px; background:var(--field); }
-textarea,.gmail-status,.icon-button,.gmail-logout,.resume-row { background:var(--field); }
-@media (min-width:761px) { .page-heading { display:flex; } }
-@media (max-width:760px) { .page-heading h1 { font-size:20px; } .page-heading p { font-size:12px; } }

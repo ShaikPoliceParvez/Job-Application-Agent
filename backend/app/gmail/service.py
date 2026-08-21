@@ -12,9 +12,9 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
-from ..config import settings
-from ..storage.appwrite import configured as appwrite_configured
-from ..storage.appwrite import download_resume
+from backend.app.config import settings
+from backend.app.storage.appwrite import configured as appwrite_configured
+from backend.app.storage.appwrite import download_resume
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 _oauth_state = ""
@@ -29,10 +29,7 @@ def resume_attachment_name(candidate_name: str, source_name: str) -> str:
 
 def _client_config() -> dict[str, Any]:
     if not settings.google_client_id or not settings.google_client_secret:
-        raise RuntimeError(
-            "Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the runtime environment "
-            "(Appwrite Function environment variables in production, or .env locally)."
-        )
+        raise RuntimeError("Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env first")
     return {
         "web": {
             "client_id": settings.google_client_id,
@@ -59,9 +56,7 @@ def authorization_url() -> str:
     _oauth_flow = Flow.from_client_config(_client_config(), SCOPES, state=None)
     _oauth_flow.redirect_uri = settings.google_redirect_uri
     url, _oauth_state = _oauth_flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
-        prompt="consent select_account",
+        access_type="offline", include_granted_scopes="true", prompt="consent"
     )
     return url
 

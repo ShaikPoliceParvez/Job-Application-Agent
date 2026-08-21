@@ -1,6 +1,8 @@
-# Appwrite/serverless deployment requirements.
-# OCR packages are kept in requirements-local.txt because the Appwrite
-# Python 3.14 runtime cannot install the pinned PaddleOCR stack.
+# ============================================================
+# PHASE 1 requirements (Screenshot -> Preprocessing -> PaddleOCR -> API)
+# Later phases (LangGraph, Qwen/Ollama, Gemma, Gmail API, SQLite) will
+# add more packages incrementally in their own phase — see README.
+# ============================================================
 
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
@@ -9,7 +11,19 @@ python-dotenv==1.0.1
 pydantic==2.9.2
 pydantic-settings==2.5.2
 
-# Backend/runtime packages
+# Image handling / preprocessing
+pillow==10.4.0
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+
+# OCR
+setuptools>=68  # required by paddle at import time, not auto-pulled on py3.12
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+protobuf==3.20.3  # PaddlePaddle 2.6.2 compatibility
+
+# Development and test tooling
+pytest>=8.0
 httpx>=0.27
 pypdf>=5.0
 langgraph>=0.2.0

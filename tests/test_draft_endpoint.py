@@ -55,17 +55,6 @@ def test_chat_homepage_is_served():
     assert "Job Application Agent" in response.text
 
 
-def test_production_root_returns_health_response(monkeypatch):
-    from backend.app.config import settings
-
-    monkeypatch.setattr(settings, "app_env", "production")
-
-    response = client.get("/")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "job-application-agent"}
-
-
 def test_draft_streams_pasted_text_and_model_tokens():
     with patch("backend.app.main.load_candidate_context") as load_context, patch("backend.app.main.stream_draft") as stream:
         load_context.return_value = ({"name": "Candidate"}, "Python resume", "resume.txt")

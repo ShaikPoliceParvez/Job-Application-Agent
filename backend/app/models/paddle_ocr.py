@@ -16,13 +16,10 @@ import re
 import time
 from typing import Any
 
-try:
-    import numpy as np
-except ImportError:  # Python runtimes without the optional OCR stack
-    np = None  # type: ignore[assignment]
+import numpy as np
 
-from ..config import settings
-from .base import OCRModel
+from backend.app.config import settings
+from backend.app.models.base import OCRModel
 
 logger = logging.getLogger("models.paddle_ocr")
 
@@ -44,11 +41,6 @@ class PaddleOCRModel(OCRModel):
     def _load(self):
         if self._engine is not None:
             return self._engine
-
-        if np is None:
-            raise RuntimeError(
-                "PaddleOCR is unavailable in this runtime. Use Python 3.11 or 3.12 for OCR."
-            )
 
         logger.info(
             "MODEL_LOADING PaddleOCR ocr_version=%s lang=%s (first use, lazy)",
@@ -151,7 +143,7 @@ class PaddleOCRModel(OCRModel):
 
         full_text = "\n".join(b["text"] for b in blocks if b["text"])
 
-        from ..ocr.confidence import calculate_ocr_confidence
+        from backend.app.ocr.confidence import calculate_ocr_confidence
 
         confidence = calculate_ocr_confidence(blocks)
 
