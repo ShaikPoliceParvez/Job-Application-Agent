@@ -31,10 +31,14 @@ const detailsEmpty = document.querySelector('#details-empty');
 const detailsContent = document.querySelector('#details-content');
 const detailsState = document.querySelector('#details-state');
 const draftState = document.querySelector('#draft-state');
+const tabs = document.querySelectorAll('.tab');
+const themeToggle = document.querySelector('#theme-toggle');
+const helpButton = document.querySelector('#help-button');
+const viewApplications = document.querySelector('#view-applications');
 const API_BASE_URL = (
   window.API_BASE_URL ||
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:8000'
+    ? window.location.origin
     : 'https://6a869de40018f36a7034.sgp.appwrite.run')
 ).replace(/\/$/, '');
 let selectedFile = null;
@@ -42,6 +46,34 @@ let extractedText = '';
 let candidateEmails = [];
 let draftIsEditing = false;
 let gmailConnected = false;
+
+function setSourceMode(mode) {
+  tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.mode === mode));
+  const pasteMode = mode === 'paste';
+  message.classList.toggle('hidden', !pasteMode);
+  document.querySelector('#message-count').parentElement.classList.toggle('hidden', !pasteMode);
+  dropzone.classList.toggle('hidden', pasteMode);
+  if (!pasteMode) screenshot.focus();
+}
+
+tabs.forEach((tab, index) => {
+  tab.dataset.mode = index === 0 ? 'paste' : 'upload';
+  tab.addEventListener('click', () => setSourceMode(tab.dataset.mode));
+});
+setSourceMode('paste');
+
+const savedTheme = localStorage.getItem('job-agent-theme');
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+themeToggle.addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  if (theme === 'light') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  localStorage.setItem('job-agent-theme', theme);
+});
+helpButton.addEventListener('click', () => {
+  progress.textContent = 'Start by pasting a job post or uploading a screenshot, then analyze it to create a draft.';
+});
+viewApplications.addEventListener('click', () => document.querySelector('.draft-card').scrollIntoView({ behavior:'smooth', block:'start' }));
 
 function count(input, output, max) { output.textContent = `${input.value.length} / ${max}`; }
 message.addEventListener('input', () => count(message, document.querySelector('#message-count'), 8000));

@@ -7,15 +7,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./styles.css?v=10">
+  <link rel="stylesheet" href="/static/styles.css?v=11">
 </head>
 <body>
   <main class="app-shell">
     <header class="app-header">
       <div class="brand"><span class="brand-icon">✉</span><div><strong>Job Application Agent</strong><small>AI-Powered. Local. Private.</small></div></div>
-      <div class="header-actions"><button id="gmail-connect" class="gmail-status" type="button" disabled><span class="status-check">✓</span><div><b id="gmail-label">Checking Gmail...</b><small id="gmail-account">Checking saved connection</small></div><span>⌄</span></button><button id="gmail-logout" class="gmail-logout hidden" type="button">Log out</button><button class="icon-button" type="button" aria-label="Toggle theme">☼</button><button class="icon-button" type="button" aria-label="Help">?</button></div>
+      <div class="header-actions"><button id="gmail-connect" class="gmail-status" type="button" disabled><span class="status-check">✓</span><div><b id="gmail-label">Checking Gmail...</b><small id="gmail-account">Checking saved connection</small></div><span>⌄</span></button><button id="gmail-logout" class="gmail-logout hidden" type="button">Log out</button><button id="theme-toggle" class="icon-button" type="button" aria-label="Toggle theme" title="Toggle theme">☼</button><button id="help-button" class="icon-button" type="button" aria-label="Help" title="Show help">?</button></div>
     </header>
-    <section class="page-heading"><div><h1>Create New Application</h1><p>Upload a job post or paste recruiter message to generate a personalized email.</p></div><button class="outline-button" type="button" id="view-applications">☷ &nbsp; View Applications</button></section>
+    <section class="page-heading"><div><h1>Create New Application</h1><p>Upload a job post or paste recruiter message to generate a personalized email.</p></div><button class="outline-button" type="button" id="view-applications">↓ &nbsp; Jump to Draft</button></section>
     <section class="workspace-grid">
       <div class="left-column">
         <section class="card source-card"><div class="card-title"><span class="number-icon">1</span><div><h2>Job Post / Recruiter Message</h2><p>Paste text or upload a screenshot of the job post or recruiter message.</p></div></div><div class="tabs"><button class="tab active" type="button">Paste Text</button><button class="tab" type="button">Upload Screenshot</button></div><textarea id="message" maxlength="8000" placeholder="Paste a job posting, recruiter email, or LinkedIn message here..."></textarea><div class="counter"><span></span><span id="message-count">0 / 8000</span></div><div class="upload-box" id="dropzone"><input id="screenshot" type="file" accept="image/png,image/jpeg,image/webp" hidden><span class="upload-symbol">♧</span><div><b>Drop a screenshot here or click to choose</b><small>PNG, JPG, JPEG, WebP (Max 10MB)</small></div><button id="choose-file" class="outline-button" type="button">Choose File</button></div><div id="file-name" class="selected-file"></div><div class="tip">💡 &nbsp;Tip: Clear screenshots with the full job description give the best results.</div></section>
@@ -30,6 +30,6 @@
     <section class="security-note"><b>♙ &nbsp; Nothing is sent automatically.</b><span>You will review and approve the email before it can be sent via your connected Gmail account.</span></section>
     <footer>Local AI Processing &nbsp; • &nbsp; Your data stays on this machine &nbsp; • &nbsp; No external servers used &nbsp; <b>♧</b></footer>
   </main>
-  <script src="./app.js?v=10"></script>
+  <script src="/static/app.js?v=11"></script>
 </body>
 </html>

@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/gmail/callback"
     google_token_path: Path = Path("data/gmail_token.json")
+    frontend_url: str = "https://job-application-agent.appwrite.network"
 
     # ---- Appwrite Storage ---------------------------------------------
     appwrite_endpoint: str = "https://cloud.appwrite.io/v1"

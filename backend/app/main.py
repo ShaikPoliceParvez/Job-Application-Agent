@@ -72,6 +72,7 @@ configured_origins = {
 }
 configured_origins.update({
     "http://localhost:8000",
+    "http://127.0.0.1:8000",
     "https://job-application-agent.appwrite.network",
 })
 
@@ -143,14 +144,15 @@ def gmail_start() -> RedirectResponse:
 
 @app.get("/auth/gmail/callback")
 def gmail_callback(code: str = "", state: str = "", error: str = "") -> RedirectResponse:
+    frontend_url = settings.frontend_url.rstrip("/") if _is_production() else ""
     if error:
-        return RedirectResponse("/?gmail=error")
+        return RedirectResponse(f"{frontend_url}/?gmail=error" if frontend_url else "/?gmail=error")
     try:
         finish_authorization(code, state)
     except Exception as exc:  # noqa: BLE001 - OAuth errors are shown after redirect
         logger.exception("GMAIL_AUTH_FAILED error=%s", exc)
-        return RedirectResponse("/?gmail=error")
-    return RedirectResponse("/?gmail=connected")
+        return RedirectResponse(f"{frontend_url}/?gmail=error" if frontend_url else "/?gmail=error")
+    return RedirectResponse(f"{frontend_url}/?gmail=connected" if frontend_url else "/?gmail=connected")
 
 
 @app.get("/gmail/status")

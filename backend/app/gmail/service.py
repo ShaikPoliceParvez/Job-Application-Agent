@@ -59,7 +59,9 @@ def authorization_url() -> str:
     _oauth_flow = Flow.from_client_config(_client_config(), SCOPES, state=None)
     _oauth_flow.redirect_uri = settings.google_redirect_uri
     url, _oauth_state = _oauth_flow.authorization_url(
-        access_type="offline", include_granted_scopes="true", prompt="consent"
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent select_account",
     )
     return url
 
