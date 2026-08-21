@@ -166,6 +166,29 @@ async function refineDraft() {
 function splitDraft() { const lines = draft.value.split('\n'); const subjectIndex = lines.findIndex(line => /^\*{0,2}subject\*{0,2}\s*:/i.test(line)); if (subjectIndex >= 0) document.querySelector('#draft-subject').textContent = lines[subjectIndex].replace(/^\*{0,2}subject\*{0,2}\s*:\s*/i, '').replace(/\*{2}$/,'').trim(); const to = candidateEmails[0] || '—'; document.querySelector('#draft-to').textContent = to; }
 function updateGmailStatus(data) { gmailConnected = Boolean(data.connected); gmailLabel.textContent = gmailConnected ? 'Logged in' : 'Connect Gmail'; gmailAccount.textContent = data.account || (gmailConnected ? 'Gmail account ready' : 'Authorize before sending'); gmailConnect.disabled = gmailConnected; gmailLogout.classList.toggle('hidden', !gmailConnected); }
 async function loadGmailStatus() { try { updateGmailStatus(await fetch(`${API_BASE_URL}/gmail/status`).then(response => response.json())); } catch (error) { gmailAccount.textContent = 'Gmail status unavailable'; } }
+async function startGmailLogin() {
+  gmailConnect.disabled = true;
+  gmailLabel.textContent = 'Connecting...';
+  progress.textContent = '';
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/gmail/start`, { redirect:'manual' });
+    if (response.type === 'opaqueredirect') {
+      window.location.href = `${API_BASE_URL}/auth/gmail/start`;
+      return;
+    }
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.detail || 'Gmail setup is incomplete in the deployed backend.');
+    }
+    const redirectUrl = response.headers.get('Location');
+    if (!redirectUrl) throw new Error('Gmail authorization URL was not returned.');
+    window.location.href = redirectUrl;
+  } catch (error) {
+    progress.textContent = error.message;
+    gmailLabel.textContent = 'Connect Gmail';
+    gmailConnect.disabled = false;
+  }
+}
 async function logoutGmail() { gmailLogout.disabled = true; try { const response = await fetch(`${API_BASE_URL}/auth/gmail/logout`, { method:'POST' }); updateGmailStatus(await response.json()); progress.textContent = 'Gmail disconnected.'; } catch (error) { progress.textContent = 'Could not disconnect Gmail.'; } finally { gmailLogout.disabled = false; } }
 async function sendDraft() {
   if (!draft.value.trim()) { progress.textContent = 'Generate a draft before sending it.'; return; }
@@ -184,7 +207,7 @@ function setDraftEditing(editing) { draftIsEditing = editing; draft.readOnly = !
 analyzeButton.addEventListener('click', analyze); regenerateButton.addEventListener('click', generateDraft); editButton.addEventListener('click', () => { if (!draft.value.trim()) { progress.textContent = 'Generate a draft before editing it.'; return; } setDraftEditing(!draftIsEditing); });
 refineButton.addEventListener('click', refineDraft); refineInstruction.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); refineDraft(); } });
 clearButton.addEventListener('click', () => { message.value=''; instructions.value=''; refineInstruction.value=''; refineButton.disabled=true; selectedFile=null; extractedText=''; draft.value=''; draft.classList.add('hidden'); draftRendered.classList.add('hidden'); previewToggle.classList.add('hidden'); attachmentNote.classList.add('hidden'); draftEmpty.classList.remove('hidden'); detailsContent.classList.add('hidden'); detailsEmpty.classList.remove('hidden'); detailsState.textContent='Not analyzed'; draftState.textContent='No draft yet'; approveButton.disabled=true; setDraftEditing(false); count(message, document.querySelector('#message-count'), 8000); count(instructions, document.querySelector('#instructions-count'), 1000); });
-gmailConnect.addEventListener('click', () => { if (!gmailConnected) window.location.href = `${API_BASE_URL}/auth/gmail/start`; });
+gmailConnect.addEventListener('click', () => { if (!gmailConnected) startGmailLogin(); });
 gmailLogout.addEventListener('click', logoutGmail);
 plainPreviewButton.addEventListener('click', () => showPreview('plain'));
 renderedPreviewButton.addEventListener('click', () => showPreview('rendered'));

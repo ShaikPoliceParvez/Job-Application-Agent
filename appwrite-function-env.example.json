@@ -1,0 +1,19 @@
+{
+  "APP_ENV": "production",
+  "EMAIL_SEND_MODE": "gmail",
+  "GOOGLE_CLIENT_ID": "YOUR_GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET": "YOUR_GOOGLE_CLIENT_SECRET",
+  "GOOGLE_REDIRECT_URI": "https://YOUR_APPWRITE_FUNCTION_DOMAIN/auth/gmail/callback",
+  "FRONTEND_URL": "https://YOUR_APPWRITE_FRONTEND_DOMAIN",
+  "LLM_MODE": "cloud",
+  "OLLAMA_BASE_URL": "https://ollama.com",
+  "OLLAMA_API_KEY": "1e91378090d2444aa0be6340a0198fed.sCClxY2NCaqILMsbYJv8ryjQ",
+  "OLLAMA_MODEL": "gemma2:2b-instruct-q2_K",
+  "CORS_ALLOWED_ORIGINS": "https://job-application-agent.appwrite.network/",
+  "APPWRITE_ENDPOINT": "https://cloud.appwrite.io/v1",
+  "APPWRITE_PROJECT_ID": "6a868ba10001cf4483e4",
+  "APPWRITE_API_KEY": "standard_b14cc79bb5b151ab5be53e1f8512d1502644c66f21525af90c5ea359be6d6ae242bac7345f0d58b7b8f986a8a03bb15f398f92964a488ebb11d744ae4fa7abd0b9607c21791b1cc8d924279f0d927c37ec70c81baab71fd62ba3571c994ca280ee8cfeb02e2d2834326658655fdd795ada0bf65aeca7d677ba718c167e17add2",
+  "APPWRITE_BUCKET_ID": "resumes",
+  "APPWRITE_RESUME_FILE_ID": "6a86994b0026f8787c5b",
+  "APPWRITE_RESUME_FILENAME": "resume.pdf"
+}
