@@ -118,12 +118,25 @@ def _extract_ocr(image_path: str, image_bytes: bytes, filename: str, content_typ
 
 @app.get("/health")
 def health() -> dict:
-    profile, _, resume_name = load_candidate_context()
+    # Health checks must not download remote resume storage or parse a PDF.
+    # Those dependencies can be unavailable while the API itself is healthy.
+    profile_loaded = settings.profile_path.exists()
+    if appwrite_storage_configured() and settings.appwrite_resume_file_id:
+        resume_name = settings.appwrite_resume_filename or "resume.pdf"
+    else:
+        resume_name = next(
+            (
+                path.name
+                for path in sorted(settings.resume_directory.iterdir())
+                if path.is_file() and path.suffix.lower() in {".txt", ".md", ".json", ".pdf"}
+            ),
+            "",
+        )
     return {
         "status": "ok",
         "service": "job-application-agent",
         "phase": 3,
-        "profile_loaded": bool(profile),
+        "profile_loaded": profile_loaded,
         "resume_name": resume_name,
         "llm_provider": "ollama_cloud" if settings.llm_mode == "cloud" else "ollama_local",
         "model": settings.ollama_model,
