@@ -45,8 +45,6 @@ from backend.app.gmail.service import (
     resume_attachment_name,
     send_email,
 )
-from backend.app.storage.appwrite import configured as appwrite_storage_configured
-from backend.app.storage.appwrite import upload_resume as upload_resume_to_appwrite
 
 configure_logging()
 logger = logging.getLogger("main")
@@ -98,8 +96,8 @@ def resume_status() -> dict:
     return {
         "configured": bool(resume_name),
         "name": resume_name,
-        "storage": "appwrite" if appwrite_storage_configured() and settings.appwrite_resume_file_id else "local",
-        "file_id": settings.appwrite_resume_file_id if appwrite_storage_configured() else "",
+        "storage": "local",
+        "file_id": "",
         "size_bytes": resume_path.stat().st_size if resume_path and resume_path.exists() else 0,
         "text_loaded": bool(resume_text.strip()),
     }
@@ -168,7 +166,7 @@ def gmail_send(recipient: str = Form(""), subject: str = Form(""), body: str = F
 
 
 @app.post("/resume")
-async def upload_resume(file: UploadFile = File(...), file_id: str = Form("")) -> dict:
+async def upload_resume(file: UploadFile = File(...)) -> dict:
     allowed = {".pdf", ".txt", ".md", ".json"}
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in allowed:
@@ -176,14 +174,10 @@ async def upload_resume(file: UploadFile = File(...), file_id: str = Form("")) -
     raw = await file.read()
     if not raw or len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=400, detail="Resume is empty or exceeds the upload limit.")
-    if appwrite_storage_configured():
-        try:
-            stored = upload_resume_to_appwrite(raw, Path(file.filename or "resume.pdf").name, file_id)
-        except Exception as exc:  # noqa: BLE001 - return safe storage error to UI
-            logger.exception("APPWRITE_RESUME_UPLOAD_FAILED error=%s", exc)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {"configured": True, "storage": "appwrite", **stored}
-    safe_name = f"default_resume{suffix}"
+    candidate_name = ""
+    if settings.profile_path.exists():
+        candidate_name = str(json.loads(settings.profile_path.read_text(encoding="utf-8")).get("name", ""))
+    safe_name = resume_attachment_name(candidate_name, file.filename or suffix)
     save_path = settings.resume_directory / safe_name
     for existing_path in settings.resume_directory.iterdir():
         if existing_path.is_file() and existing_path.suffix.lower() in allowed:

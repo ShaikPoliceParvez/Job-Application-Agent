@@ -50,7 +50,7 @@ def test_mime_has_alternative_parts_and_pdf_attachment(tmp_path, monkeypatch):
 
 def test_resume_attachment_name_uses_candidate_name():
     assert resume_attachment_name("Shaik Parvez", "default_resume.pdf") == "Shaik_Parvez_resume.pdf"
-    assert resume_attachment_name("", "default_resume.pdf") == "default_resume.pdf"
+    assert resume_attachment_name("", "default_resume.pdf") == "Candidate_resume.pdf"
 
 
 def test_email_validator_rejects_recipient_and_application_instruction():

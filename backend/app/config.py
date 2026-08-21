@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     profile_path: Path = Path("data/profile/profile.json")
 
     # ---- OCR (PHASE 1) -------------------------------------------------
-    # paddleocr==2.9.1 supports PP-OCR through PP-OCRv4.
-    model_ocr: str = "PP-OCRv4"
+    # PaddleOCR 3.0.3 with the lightweight PP-OCRv5 Mobile models.
+    model_ocr: str = "PP-OCRv5"
     ocr_confidence_threshold: float = 0.80
     ocr_lang: str = "en"
     ocr_max_side: int = 1024
@@ -65,14 +65,6 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/auth/gmail/callback"
     google_token_path: Path = Path("data/gmail_token.json")
-
-    # ---- Appwrite Storage ---------------------------------------------
-    appwrite_endpoint: str = "https://cloud.appwrite.io/v1"
-    appwrite_project_id: str = ""
-    appwrite_api_key: str = ""
-    appwrite_bucket_id: str = ""
-    appwrite_resume_file_id: str = ""
-    appwrite_resume_filename: str = "resume.pdf"
 
     # ---- Database (PHASE 9+) -------------------------------------------
     database_url: str = "sqlite:///applications.db"

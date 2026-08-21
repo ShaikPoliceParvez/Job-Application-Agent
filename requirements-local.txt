@@ -1,0 +1,15 @@
+# Local development requirements.
+-r requirements.txt
+
+# PaddleOCR remains the local screenshot OCR implementation.
+setuptools>=68
+pillow==10.4.0
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+paddlepaddle==3.0.0
+paddleocr==3.0.3
+paddlex==3.0.3
+protobuf==3.20.3
+
+# Test tooling
+pytest>=8.0

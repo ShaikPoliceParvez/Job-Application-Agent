@@ -13,7 +13,7 @@ def test_supports_paddleocr_29_legacy_ocr_result():
             [[[0, 30], [150, 30], [150, 50], [0, 50]], ("hr@example.com", 0.99)],
         ]
     ]
-    model = PaddleOCRModel(ocr_version="PP-OCRv4")
+    model = PaddleOCRModel(ocr_version="PP-OCRv5")
 
     with patch.object(model, "_load", return_value=engine):
         result = model.extract_text(np.zeros((20, 20, 3), dtype=np.uint8))
